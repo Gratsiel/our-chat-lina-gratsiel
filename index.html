@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.4</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.5</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -1673,8 +1673,7 @@
           showToast('Сначала введите токен бота и ID получателя');
           return;
         }
-        await sendTelegramPush(state.activeRole === 'me' ? state.myName : state.partnerName, 'Тестовое уведомление 💕');
-        showToast('Тест отправлен в Telegram!');
+        await sendTelegramPush(state.activeRole === 'me' ? state.myName : state.partnerName, 'Тестовое уведомление 💕', true);
       });
 
       // LOCK SCREEN
@@ -1762,16 +1761,27 @@
       const pickRoleMeBtn = document.getElementById('pickRoleMeBtn');
       const pickRolePartnerBtn = document.getElementById('pickRolePartnerBtn');
 
-      async function sendTelegramPush(senderName, textBody) {
+      async function sendTelegramPush(senderName, textBody, isTest = false) {
         try {
           const token = (state.tgBotToken || '').trim();
           const chatId = (state.tgTargetChatId || '').trim();
-          if (!token || !chatId) return;
+          if (!token || !chatId) return false;
           const bodyText = state.hideNotifText ? 'Новое приватное сообщение 🔒' : textBody;
           const fullText = `💌 ${senderName}: ${bodyText}`;
           const url = `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage?chat_id=${encodeURIComponent(chatId)}&text=${encodeURIComponent(fullText)}`;
-          await fetch(url, { mode: 'no-cors' });
-        } catch (e) {}
+          const res = await fetch(url);
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) {
+            const desc = data.description || ('HTTP ' + res.status);
+            showToast('Ошибка Telegram: ' + desc);
+            return false;
+          }
+          if (isTest) showToast('✅ Тест доставлен в Telegram!');
+          return true;
+        } catch (e) {
+          if (isTest) showToast('❌ Нет связи с Telegram API (проверьте сеть/VPN)');
+          return false;
+        }
       }
 
       function chooseRole(role) {
