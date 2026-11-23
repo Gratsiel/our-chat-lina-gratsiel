@@ -11,7 +11,6 @@
   <meta name="apple-mobile-web-app-title" content="Наш Чат" />
   <meta name="theme-color" content="#e11d48" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
     :root {
       --bg-app: #fdf8f9;
@@ -424,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.0</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.1</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -473,7 +472,7 @@
             <span>Скрывать текст сообщений в push-уведомлениях</span>
           </label>
           <button id="openNotifFromSettingsBtn" type="button" class="w-full py-2 px-3 rounded-xl subtle-bg text-xs font-medium text-rose-500 hover:opacity-80 cursor-pointer text-left">
-            🔔 Открыть настройки уведомлений и OneSignal Key
+            🔔 Настроить уведомления в Telegram
           </button>
         </div>
 
@@ -557,42 +556,42 @@
       </form>
     </div>
 
-    <!-- NOTIFICATIONS MODAL (iOS & Android) -->
+    <!-- NOTIFICATIONS MODAL (Telegram Bot) -->
     <div id="notifModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">🔔 Уведомления (iOS и Android)</h3>
+          <h3 class="font-bold text-base">🔔 Уведомления через Telegram</h3>
           <button id="closeNotifBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
         <div id="notifStatusBox" class="text-xs px-3 py-2 rounded-xl subtle-bg text-muted">
-          Статус: Проверка...
+          Статус: Настройте бота ниже
         </div>
 
-        <div>
-          <label class="block text-xs text-muted mb-1">🔑 OneSignal API Key (вводится 1 раз, не хранится на GitHub)</label>
-          <input id="oneSignalKeyInput" type="password" placeholder="Вставьте API Key OneSignal..." class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-muted mb-1">🤖 Токен Telegram-бота (из @BotFather)</label>
+            <input id="tgTokenInput" type="password" placeholder="123456789:AAH..." class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">👤 Telegram ID получателя (собеседника)</label>
+            <input id="tgChatIdInput" type="text" inputmode="numeric" placeholder="Например: 987654321" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
+          </div>
         </div>
 
-        <div class="space-y-2 text-xs text-muted leading-relaxed">
-          <div class="p-3 rounded-xl subtle-bg space-y-1">
-            <p class="font-semibold text-rose-500">📱 Для Линочки (iPhone 12 · Safari):</p>
-            <p>1. Откройте сайт в <strong>Safari</strong> и нажмите кнопку <strong>«Поделиться»</strong> (квадрат со стрелкой вверх).</p>
-            <p>2. Выберите <strong>«На экран «Домой»»</strong> и откройте мессенджер с рабочего стола.</p>
-            <p>3. Нажмите кнопку <strong>«Включить уведомления»</strong> ниже.</p>
-          </div>
-          <div class="p-3 rounded-xl subtle-bg space-y-1">
-            <p class="font-semibold text-emerald-600">🤖 Для вас (Honor 200 · Яндекс Браузер):</p>
-            <p>Нажмите <strong>«Включить уведомления»</strong> и разрешите показ уведомлений для сайта в настройках Яндекс Браузера.</p>
-          </div>
+        <div class="p-3 rounded-xl subtle-bg text-xs text-muted space-y-1 leading-relaxed">
+          <p class="font-semibold text-rose-500">Как подключить за 1 минуту:</p>
+          <p>1. Создайте бота в <strong>@BotFather</strong> (<span class="font-mono">/newbot</span>) и нажмите в нём <strong>Старт</strong> с <strong>обоих</strong> телефонов.</p>
+          <p>2. Узнайте ваши числовые ID в боте <strong>@userinfobot</strong>.</p>
+          <p>3. На своём телефоне впишите ID девушки, а на её телефоне — ваш ID (токен бота один и тот же).</p>
         </div>
 
         <div class="flex items-center justify-between gap-2 pt-2 border-t border-soft">
           <button id="testNotifBtn" type="button" class="px-3 py-2 rounded-xl subtle-bg text-xs font-medium hover:opacity-80 cursor-pointer">
-            Тест уведомления
+            Тест в Telegram
           </button>
           <button id="enableNotifBtn" type="button" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium cursor-pointer transition">
-            Включить уведомления
+            Сохранить
           </button>
         </div>
       </div>
@@ -691,7 +690,8 @@
         accentColor: 'rose',
         wallpaper: 'clean',
         quickEmoji: '❤️',
-        oneSignalApiKey: '',
+        tgBotToken: '',
+        tgTargetChatId: '',
         isLocked: false,
         resetVotes: { me: false, partner: false },
         messages: [
@@ -1113,7 +1113,7 @@
         renderGallery();
         playPopSound();
         const senderTitle = state.activeRole === 'me' ? state.myName : state.partnerName;
-        sendOneSignalPush(senderTitle || 'Новое сообщение', clean || '📷 Фотография');
+        sendTelegramPush(senderTitle || 'Новое сообщение', clean || '📷 Фотография');
       }
 
       function initEmojiDrawer() {
@@ -1401,575 +1401,7 @@
       closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
       document.getElementById('openNotifFromSettingsBtn').addEventListener('click', () => {
         settingsModal.classList.add('hidden');
-        const keyInput = document.getElementById('oneSignalKeyInput');
-        if (keyInput) keyInput.value = state.oneSignalApiKey || '';
-        updateNotifStatus();
-        notifModal.classList.remove('hidden');
-      });
-
-      saveSettingsBtn.addEventListener('click', () => {
-        state.wallpaper = document.getElementById('wallpaperSelect').value;
-        state.quickEmoji = document.getElementById('quickEmojiSelect').value;
-        state.anniversaryDate = anniversaryInput.value || defaultState.anniversaryDate;
-        state.lockPin = document.getElementById('lockPinInput').value.trim();
-        state.hideNotifText = document.getElementById('hideNotifTextInput').checked;
-        saveState();
-        applyCustomLook();
-        renderHeader();
-        renderMessages();
-        settingsModal.classList.add('hidden');
-        showToast('Настройки сохранены');
-      });
-
-      openResetConfirmBtn.addEventListener('click', () => {
-        settingsModal.classList.add('hidden');
-        resetModal.classList.remove('hidden');
-      });
-      cancelResetBtn.addEventListener('click', () => resetModal.classList.add('hidden'));
-      const resetVoteBanner = document.getElementById('resetVoteBanner');
-      const resetVoteText = document.getElementById('resetVoteText');
-      const approveResetBtn = document.getElementById('approveResetBtn');
-      const cancelResetVoteBtn = document.getElementById('cancelResetVoteBtn');
-
-      function performMutualReset() {
-        state.messages = [];
-        state.resetVotes = { me: false, partner: false };
-        saveState();
-        renderResetBanner();
-        renderMessages();
-        renderGallery();
-        showToast('Оба подтвердили: история переписки очищена');
-      }
-
-      function renderResetBanner() {
-        const v = state.resetVotes || { me: false, partner: false };
-        if (!v.me && !v.partner) {
-          resetVoteBanner.classList.add('hidden');
-          return;
-        }
-        resetVoteBanner.classList.remove('hidden');
-        const myRole = state.activeRole || 'me';
-        const iVoted = !!v[myRole];
-        const requesterName = v.me ? state.myName : state.partnerName;
-        if (iVoted) {
-          resetVoteText.textContent = '⏳ Запрос на очистку отправлен. Ждём подтверждения второго человека...';
-          approveResetBtn.classList.add('hidden');
-        } else {
-          resetVoteText.textContent = `⚠️ ${requesterName} предлагает очистить переписку. Подтвердить?`;
-          approveResetBtn.classList.remove('hidden');
-        }
-      }
-
-      confirmResetBtn.addEventListener('click', () => {
-        resetModal.classList.add('hidden');
-        state.resetVotes = state.resetVotes || { me: false, partner: false };
-        state.resetVotes[state.activeRole || 'me'] = true;
-        if (state.resetVotes.me && state.resetVotes.partner) {
-          performMutualReset();
-        } else {
-          saveState();
-          renderResetBanner();
-          showToast('Запрос на очистку отправлен');
-        }
-      });
-
-      approveResetBtn.addEventListener('click', () => {
-        state.resetVotes = state.resetVotes || { me: false, partner: false };
-        state.resetVotes[state.activeRole || 'me'] = true;
-        if (state.resetVotes.me && state.resetVotes.partner) {
-          performMutualReset();
-        } else {
-          saveState();
-          renderResetBanner();
-        }
-      });
-
-      cancelResetVoteBtn.addEventListener('click', () => {
-        state.resetVotes = { me: false, partner: false };
-        saveState();
-        renderResetBanner();
-        showToast('Очистка истории отменена');
-      });
-
-      // CALENDAR LOGIC
-      const calPrevBtn = document.getElementById('calPrevBtn');
-      const calNextBtn = document.getElementById('calNextBtn');
-      const calMonthTitle = document.getElementById('calMonthTitle');
-      const calGrid = document.getElementById('calGrid');
-      const calSelectedTitle = document.getElementById('calSelectedTitle');
-      const calDayPlans = document.getElementById('calDayPlans');
-      const calQuickAddForm = document.getElementById('calQuickAddForm');
-      const calQuickInput = document.getElementById('calQuickInput');
-
-      let calYear = new Date().getFullYear();
-      let calMonth = new Date().getMonth();
-      let selectedDateStr = new Date().toISOString().slice(0, 10);
-
-      function renderCalendar() {
-        const monthNames = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
-        calMonthTitle.textContent = `${monthNames[calMonth]} ${calYear}`;
-
-        const firstDay = new Date(calYear, calMonth, 1);
-        const startOffset = (firstDay.getDay() + 6) % 7; // Monday = 0
-        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-        const todayStr = new Date().toISOString().slice(0, 10);
-
-        const planDates = new Set(state.plans.filter(p => p.date).map(p => p.date));
-        const annivMonthDay = (state.anniversaryDate || '').slice(5);
-
-        let html = '';
-        for (let i = 0; i < startOffset; i++) {
-          html += '<div></div>';
-        }
-        for (let d = 1; d <= daysInMonth; d++) {
-          const mm = String(calMonth + 1).padStart(2, '0');
-          const dd = String(d).padStart(2, '0');
-          const dateStr = `${calYear}-${mm}-${dd}`;
-          const hasPlan = planDates.has(dateStr);
-          const isSelected = dateStr === selectedDateStr;
-          const isToday = dateStr === todayStr;
-          const isAnniv = annivMonthDay && `${mm}-${dd}` === annivMonthDay;
-
-          let cls = 'h-10 rounded-xl flex flex-col items-center justify-center text-xs font-medium cursor-pointer transition relative ';
-          if (isSelected) cls += 'bg-rose-500 text-white shadow-sm ';
-          else if (isToday) cls += 'subtle-bg ring-2 ring-rose-400 ';
-          else cls += 'hover:bg-rose-500/10 ';
-
-          html += `
-            <button type="button" data-cal-date="${dateStr}" class="${cls}">
-              <span>${d}</span>
-              ${hasPlan ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-rose-500'} mt-0.5"></span>` : ''}
-              ${isAnniv ? '<span class="absolute top-0.5 right-1 text-[9px]">❤️</span>' : ''}
-            </button>
-          `;
-        }
-        calGrid.innerHTML = html;
-
-        // Render selected day plans
-        calSelectedTitle.textContent = 'Планы на ' + selectedDateStr.split('-').reverse().join('.');
-        const dayPlans = state.plans.filter(p => p.date === selectedDateStr);
-        if (dayPlans.length === 0) {
-          calDayPlans.innerHTML = '<p class="text-xs text-muted">На этот день планов пока нет.</p>';
-        } else {
-          calDayPlans.innerHTML = dayPlans.map(p => `
-            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl subtle-bg">
-              <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
-                <input type="checkbox" data-action="toggle-plan" data-id="${p.id}" ${p.done ? 'checked' : ''} class="w-4 h-4 accent-rose-500 rounded cursor-pointer shrink-0" />
-                <span class="text-sm ${p.done ? 'line-through text-muted' : ''} break-words">${escapeHtml(p.text)}</span>
-              </label>
-              <span class="text-[11px] text-muted shrink-0">${escapeHtml(p.by)}</span>
-            </div>
-          `).join('');
-        }
-      }
-
-      tabCalendar.addEventListener('click', () => {
-        currentTab = 'calendar';
-        renderTabs();
-        renderCalendar();
-      });
-
-      calPrevBtn.addEventListener('click', () => {
-        calMonth--;
-        if (calMonth < 0) { calMonth = 11; calYear--; }
-        renderCalendar();
-      });
-
-      calNextBtn.addEventListener('click', () => {
-        calMonth++;
-        if (calMonth > 11) { calMonth = 0; calYear++; }
-        renderCalendar();
-      });
-
-      calGrid.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-cal-date]');
-        if (!btn) return;
-        selectedDateStr = btn.dataset.calDate;
-        renderCalendar();
-      });
-
-      calDayPlans.addEventListener('change', (e) => {
-        const cb = e.target.closest('input[data-action="toggle-plan"]');
-        if (cb) {
-          const plan = state.plans.find(p => p.id === cb.dataset.id);
-          if (plan) {
-            plan.done = cb.checked;
-            saveState();
-            renderCalendar();
-            renderPlans();
-            renderTabs();
-          }
-        }
-      });
-
-      calQuickAddForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const text = calQuickInput.value.trim();
-        if (!text) return;
-        const author = state.activeRole === 'me' ? state.myName : state.partnerName;
-        state.plans.unshift({
-          id: 'p' + Date.now(),
-          text,
-          done: false,
-          by: author,
-          date: selectedDateStr
-        });
-        calQuickInput.value = '';
-        saveState();
-        renderCalendar();
-        renderPlans();
-        renderTabs();
-      });
-
-      const syncBtn = document.getElementById('syncBtn');
-      const syncDot = document.getElementById('syncDot');
-      const syncBtnLabel = document.getElementById('syncBtnLabel');
-      const syncModal = document.getElementById('syncModal');
-      const closeSyncBtn = document.getElementById('closeSyncBtn');
-      const firebaseUrlInput = document.getElementById('firebaseUrlInput');
-      const roomCodeInput = document.getElementById('roomCodeInput');
-      const syncStatusBox = document.getElementById('syncStatusBox');
-      const connectSyncBtn = document.getElementById('connectSyncBtn');
-      const disconnectSyncBtn = document.getElementById('disconnectSyncBtn');
-
-      let syncTimer = null;
-      let isSyncConnected = false;
-
-      function getFirebaseEndpoint() {
-        const base = (state.firebaseUrl || '').trim().replace(/\/+$/, '');
-        const room = (state.roomCode || 'love').trim().replace(/[^a-zA-Z0-9_-]/g, '') || 'love';
-        const normBase = base.replace(/^https:\/\//i, 'https://');
-        if (!normBase.startsWith('https://')) return null;
-        return `${normBase}/rooms/${room}.json`;
-      }
-
-      function updateSyncUI(connected, statusText) {
-        isSyncConnected = connected;
-        if (connected) {
-          syncDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-          syncBtnLabel.textContent = 'Онлайн';
-          syncStatusBox.textContent = statusText || 'Статус: Подключено к Firebase';
-        } else {
-          syncDot.className = 'w-2 h-2 rounded-full bg-gray-400';
-          syncBtnLabel.textContent = 'Офлайн';
-          syncStatusBox.textContent = statusText || 'Статус: Локальный режим (без сервера)';
-        }
-      }
-
-      async function deriveAesKey(passphrase, saltStr) {
-        const enc = new TextEncoder();
-        const keyMaterial = await window.crypto.subtle.importKey(
-          'raw',
-          enc.encode(passphrase),
-          'PBKDF2',
-          false,
-          ['deriveKey']
-        );
-        return window.crypto.subtle.deriveKey(
-          {
-            name: 'PBKDF2',
-            salt: enc.encode('couple-messenger-' + saltStr),
-            iterations: 100000,
-            hash: 'SHA-256'
-          },
-          keyMaterial,
-          { name: 'AES-GCM', length: 256 },
-          false,
-          ['encrypt', 'decrypt']
-        );
-      }
-
-      async function encryptPayload(obj, passphrase, room) {
-        const iv = window.crypto.getRandomValues(new Uint8Array(12));
-        const key = await deriveAesKey(passphrase, room);
-        const encoded = new TextEncoder().encode(JSON.stringify(obj));
-        const cipher = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
-        const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
-        return { encrypted: true, iv: toB64(iv), ct: toB64(cipher), updatedAt: Date.now() };
-      }
-
-      async function decryptPayload(data, passphrase, room) {
-        const fromB64 = (str) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
-        const key = await deriveAesKey(passphrase, room);
-        const plain = await window.crypto.subtle.decrypt(
-          { name: 'AES-GCM', iv: fromB64(data.iv) },
-          key,
-          fromB64(data.ct)
-        );
-        return JSON.parse(new TextDecoder().decode(plain));
-      }
-
-      async function pushToFirebase() {
-        const url = getFirebaseEndpoint();
-        if (!url) return;
-        try {
-          const rawPayload = {
-            messages: state.messages,
-            plans: state.plans,
-            resetVotes: state.resetVotes || { me: false, partner: false },
-            updatedAt: Date.now()
-          };
-          let bodyObj = rawPayload;
-          if ((state.e2eeKey || '').trim() && window.crypto && window.crypto.subtle) {
-            bodyObj = await encryptPayload(rawPayload, state.e2eeKey.trim(), state.roomCode || 'love');
-          }
-          const res = await fetch(url, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyObj)
-          });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          updateSyncUI(true, state.e2eeKey ? 'Статус: Зашифровано (AES-256) и отправлено' : 'Статус: Синхронизировано');
-        } catch (err) {
-          updateSyncUI(false, 'Ошибка отправки: проверьте URL и правила Firebase');
-        }
-      }
-
-      async function pullFromFirebase() {
-        const url = getFirebaseEndpoint();
-        if (!url) return;
-        try {
-          const res = await fetch(url);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          let data = await res.json();
-          if (data && data.encrypted && data.iv && data.ct) {
-            if (!(state.e2eeKey || '').trim()) {
-              updateSyncUI(false, 'Данные зашифрованы: введите секретный ключ E2EE');
-              return;
-            }
-            try {
-              data = await decryptPayload(data, state.e2eeKey.trim(), state.roomCode || 'love');
-            } catch (decErr) {
-              updateSyncUI(false, 'Неверный ключ E2EE — не удалось расшифровать чат');
-              return;
-            }
-          }
-          if (data && Array.isArray(data.messages)) {
-            const remoteVotes = data.resetVotes || { me: false, partner: false };
-            const changed = JSON.stringify(data.messages) !== JSON.stringify(state.messages) ||
-                            JSON.stringify(data.plans || []) !== JSON.stringify(state.plans) ||
-                            JSON.stringify(remoteVotes) !== JSON.stringify(state.resetVotes || { me: false, partner: false });
-            if (changed) {
-              const hadMore = data.messages.length > state.messages.length;
-              state.messages = data.messages;
-              if (Array.isArray(data.plans)) state.plans = data.plans;
-              state.resetVotes = remoteVotes;
-              saveState(true);
-              renderResetBanner();
-              renderMessages();
-              renderPlans();
-              renderCalendar();
-              renderGallery();
-              renderTabs();
-              if (hadMore) {
-                playPopSound();
-                const lastMsg = data.messages[data.messages.length - 1];
-                if (lastMsg && lastMsg.sender !== state.activeRole) {
-                  const senderName = lastMsg.sender === 'me' ? state.myName : state.partnerName;
-                  triggerBrowserNotification(senderName || 'Новое сообщение', lastMsg.text || '📷 Фотография');
-                }
-              }
-            }
-          } else if (data === null) {
-            await pushToFirebase();
-          }
-          updateSyncUI(true, state.e2eeKey ? 'Статус: Подключено 🔐 (E2EE AES-256)' : 'Статус: Подключено (без E2EE)');
-        } catch (err) {
-          updateSyncUI(false, 'Ошибка подключения: проверьте HTTPS URL и CORS/правила');
-        }
-      }
-
-      function startSyncLoop() {
-        clearInterval(syncTimer);
-        if (!getFirebaseEndpoint()) {
-          updateSyncUI(false);
-          return;
-        }
-        pullFromFirebase();
-        syncTimer = setInterval(pullFromFirebase, 2000);
-      }
-
-      const origSaveState = saveState;
-      saveState = function (skipRemote) {
-        origSaveState();
-        if (!skipRemote && getFirebaseEndpoint()) {
-          pushToFirebase();
-        }
-      };
-
-      syncBtn.addEventListener('click', () => {
-        firebaseUrlInput.value = state.firebaseUrl || '';
-        roomCodeInput.value = state.roomCode || 'love';
-        document.getElementById('e2eeKeyInput').value = state.e2eeKey || '';
-        syncModal.classList.remove('hidden');
-      });
-      closeSyncBtn.addEventListener('click', () => syncModal.classList.add('hidden'));
-      syncModal.addEventListener('click', (e) => {
-        if (e.target === syncModal) syncModal.classList.add('hidden');
-      });
-
-      connectSyncBtn.addEventListener('click', () => {
-        const url = firebaseUrlInput.value.trim().replace(/^https:\/\//i, 'https://');
-        if (!url.startsWith('https://')) {
-          showToast('Введите корректный https:// URL Firebase');
-          return;
-        }
-        state.firebaseUrl = url;
-        state.roomCode = roomCodeInput.value.trim() || 'love';
-        state.e2eeKey = document.getElementById('e2eeKeyInput').value;
-        origSaveState();
-        syncModal.classList.add('hidden');
-        const lockBtn = document.getElementById('lockBtn');
-      const lockScreen = document.getElementById('lockScreen');
-      const unlockForm = document.getElementById('unlockForm');
-      const unlockPinInput = document.getElementById('unlockPinInput');
-      const unlockError = document.getElementById('unlockError');
-
-      function applyLockState() {
-        if (state.isLocked && state.lockPin) {
-          lockScreen.classList.remove('hidden');
-          unlockPinInput.value = '';
-          unlockError.classList.add('hidden');
-        } else {
-          lockScreen.classList.add('hidden');
-        }
-      }
-
-      lockBtn.addEventListener('click', () => {
-        if (!state.lockPin) {
-          openSettings();
-          showToast('Задайте PIN-код в настройках для блокировки');
-          return;
-        }
-        state.isLocked = true;
-        origSaveState();
-        applyLockState();
-      });
-
-      unlockForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (unlockPinInput.value.trim() === state.lockPin) {
-          state.isLocked = false;
-          origSaveState();
-          applyLockState();
-        } else {
-          unlockError.classList.remove('hidden');
-          unlockPinInput.value = '';
-          unlockPinInput.focus();
-        }
-      });
-
-      const notifBtn = document.getElementById('notifBtn');
-      const notifDot = document.getElementById('notifDot');
-      const notifModal = document.getElementById('notifModal');
-      const closeNotifBtn = document.getElementById('closeNotifBtn');
-      const notifStatusBox = document.getElementById('notifStatusBox');
-      const enableNotifBtn = document.getElementById('enableNotifBtn');
-      const testNotifBtn = document.getElementById('testNotifBtn');
-
-      function updateNotifStatus() {
-        if (!('Notification' in window)) {
-          notifStatusBox.textContent = 'Браузер не поддерживает уведомления (на iOS откройте сайт с экрана «Домой»).';
-          notifDot.classList.add('hidden');
-          return;
-        }
-        const perm = Notification.permission;
-        if (perm === 'granted') {
-          notifStatusBox.textContent = 'Статус: Уведомления включены ✅';
-          window.OneSignalDeferred.push(function(OneSignal) {
-            try {
-              const subId = OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.id;
-              const optedIn = OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optedIn;
-              if (subId && optedIn) {
-                notifStatusBox.textContent = 'Статус: Подключено к OneSignal ✅ (' + (state.activeRole === 'me' ? 'Русечка' : 'Линочка') + ')';
-              } else {
-                notifStatusBox.textContent = 'Статус: Разрешено в браузере, но нет подписки OneSignal — нажмите «Включить уведомления»';
-              }
-            } catch (e) {}
-          });
-          notifDot.classList.remove('hidden');
-        } else if (perm === 'denied') {
-          notifStatusBox.textContent = 'Статус: Уведомления запрещены в настройках браузера ❌';
-          notifDot.classList.add('hidden');
-        } else {
-          notifStatusBox.textContent = 'Статус: Разрешение ещё не выдано';
-          notifDot.classList.add('hidden');
-        }
-      }
-
-      async function triggerBrowserNotification(title, body) {
-        try {
-          if (!('Notification' in window) || Notification.permission !== 'granted') return;
-          const safeBody = (state.isLocked && state.lockPin) ? 'Новое приватное сообщение 🔒' : body;
-          const opts = {
-            body: safeBody,
-            icon: './icon-192.png',
-            badge: './icon-192.png',
-            tag: 'couple-chat-msg',
-            renotify: true
-          };
-          if ('serviceWorker' in navigator) {
-            const reg = (await navigator.serviceWorker.getRegistration('./')) || (await navigator.serviceWorker.getRegistration());
-            if (reg && reg.showNotification) {
-              await reg.showNotification(title, opts);
-              return;
-            }
-          }
-          new Notification(title, opts);
-        } catch (e) {}
-      }
-
-      notifBtn.addEventListener('click', () => {
-        const keyInput = document.getElementById('oneSignalKeyInput');
-        if (keyInput) keyInput.value = state.oneSignalApiKey || '';
-        updateNotifStatus();
-        notifModal.classList.remove('hidden');
-      });
-      closeNotifBtn.addEventListener('click', () => notifModal.classList.add('hidden'));
-      notifModal.addEventListener('click', (e) => {
-        if (e.target === notifModal) notifModal.classList.add('hidden');
-      });
-
-      enableNotifBtn.addEventListener('click', async () => {
-        const enteredKey = document.getElementById('oneSignalKeyInput').value.trim();
-        if (enteredKey) { state.oneSignalApiKey = enteredKey; origSaveState(); }
-        if (!('Notification' in window)) {
-          showToast('На iPhone сначала добавьте сайт на экран «Домой»');
-          return;
-        }
-        try {
-          const res = await Notification.requestPermission();
-          window.OneSignalDeferred.push(async function(OneSignal) {
-            try {
-              await OneSignal.Notifications.requestPermission();
-              await OneSignal.User.PushSubscription.optIn();
-              if (state.activeRole) await OneSignal.login('couple_' + state.activeRole);
-            } catch (e) {}
-          });
-          updateNotifStatus();
-          if (res === 'granted') {
-            showToast('Уведомления включены!');
-            triggerBrowserNotification('Наш Мессенджер 💕', 'Уведомления успешно подключены!');
-          } else {
-            showToast('Разрешение не получено');
-          }
-        } catch (e) {
-          showToast('Не удалось запросить разрешение');
-        }
-      });
-
-      testNotifBtn.addEventListener('click', () => {
-        if (!('Notification' in window) || Notification.permission !== 'granted') {
-          showToast('Сначала нажмите «Включить уведомления»');
-          return;
-        }
-        triggerBrowserNotification(state.partnerName || 'Любимая', 'Скучаю по тебе 💕 (тестовое уведомление)');
-      });
-
-      updateNotifStatus();
-      applyLockState();
-      startSyncLoop();
-        showToast('Подключаемся к Firebase...');
+        openNotifModal();
       });
 
       disconnectSyncBtn.addEventListener('click', () => {
@@ -2016,66 +1448,16 @@
       const pickRoleMeBtn = document.getElementById('pickRoleMeBtn');
       const pickRolePartnerBtn = document.getElementById('pickRolePartnerBtn');
 
-      const ONESIGNAL_APP_ID = '3bee90c9-3610-44a6-8ac9-16530c7e5f06';
-      // OneSignal API Key is stored only locally on user devices (state.oneSignalApiKey)
-      let oneSignalReady = false;
-
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async function(OneSignal) {
+      async function sendTelegramPush(senderName, textBody) {
         try {
-          const basePath = new URL('./', window.location.href).pathname;
-          await OneSignal.init({
-            appId: ONESIGNAL_APP_ID,
-            serviceWorkerPath: 'OneSignalSDKWorker.js',
-            serviceWorkerParam: { scope: basePath },
-            notifyButton: { enable: false }
-          });
-          oneSignalReady = true;
-          if (state.roleSelected && state.activeRole) {
-            await OneSignal.login('couple_' + state.activeRole);
-          }
-        } catch (e) {}
-      });
-
-      async function syncOneSignalUser(role) {
-        try {
-          window.OneSignalDeferred.push(async function(OneSignal) {
-            try {
-              await OneSignal.login('couple_' + role);
-            } catch (e) {}
-          });
-        } catch (e) {}
-      }
-
-      async function sendOneSignalPush(senderName, textBody) {
-        try {
-          const apiKey = (state.oneSignalApiKey || '').trim();
-          if (!apiKey) return;
-          const targetRole = state.activeRole === 'me' ? 'partner' : 'me';
+          const token = (state.tgBotToken || '').trim();
+          const chatId = (state.tgTargetChatId || '').trim();
+          if (!token || !chatId) return;
           const bodyText = state.hideNotifText ? 'Новое приватное сообщение 🔒' : textBody;
-          await fetch('https://api.onesignal.com/notifications', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Key ' + apiKey
-            },
-            body: JSON.stringify({
-              app_id: ONESIGNAL_APP_ID,
-              include_aliases: { external_id: ['couple_' + targetRole] },
-              target_channel: 'push',
-              headings: { en: senderName, ru: senderName },
-              contents: { en: bodyText, ru: bodyText },
-              url: window.location.href
-            })
-          }).then(async (res) => {
-            if (!res.ok) {
-              const txt = await res.text().catch(() => '');
-              showToast('OneSignal ошибка ' + res.status + ': ' + txt.slice(0, 60));
-            }
-          });
-        } catch (e) {
-          showToast('Ошибка отправки Push (проверьте сеть/VPN)');
-        }
+          const fullText = `💌 ${senderName}: ${bodyText}`;
+          const url = `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage?chat_id=${encodeURIComponent(chatId)}&text=${encodeURIComponent(fullText)}`;
+          await fetch(url, { mode: 'no-cors' });
+        } catch (e) {}
       }
 
       function chooseRole(role) {
@@ -2083,7 +1465,6 @@
         state.roleSelected = true;
         origSaveState();
         rolePickerModal.classList.add('hidden');
-        syncOneSignalUser(role);
         renderHeader();
         renderMessages();
       }
