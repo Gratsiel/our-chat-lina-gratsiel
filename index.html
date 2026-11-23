@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.1</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.2</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -473,6 +473,9 @@
           </label>
           <button id="openNotifFromSettingsBtn" type="button" class="w-full py-2 px-3 rounded-xl subtle-bg text-xs font-medium text-rose-500 hover:opacity-80 cursor-pointer text-left">
             🔔 Настроить уведомления в Telegram
+          </button>
+          <button id="reopenRolePickerBtn" type="button" class="w-full py-2 px-3 rounded-xl subtle-bg text-xs font-medium text-muted hover:text-rose-500 cursor-pointer text-left">
+            👤 Сменить роль (Русечка / Линочка)
           </button>
         </div>
 
@@ -1399,6 +1402,10 @@
       settingsBtn.addEventListener('click', openSettings);
       daysTogetherBtn.addEventListener('click', openSettings);
       closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+      document.getElementById('reopenRolePickerBtn').addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        rolePickerModal.classList.remove('hidden');
+      });
       document.getElementById('openNotifFromSettingsBtn').addEventListener('click', () => {
         settingsModal.classList.add('hidden');
         openNotifModal();
@@ -1465,6 +1472,7 @@
         state.roleSelected = true;
         origSaveState();
         rolePickerModal.classList.add('hidden');
+        renderResetBanner();
         renderHeader();
         renderMessages();
       }
