@@ -424,7 +424,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.9</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.0</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -1876,6 +1876,17 @@
         const perm = Notification.permission;
         if (perm === 'granted') {
           notifStatusBox.textContent = 'Статус: Уведомления включены ✅';
+          window.OneSignalDeferred.push(function(OneSignal) {
+            try {
+              const subId = OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.id;
+              const optedIn = OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optedIn;
+              if (subId && optedIn) {
+                notifStatusBox.textContent = 'Статус: Подключено к OneSignal ✅ (' + (state.activeRole === 'me' ? 'Русечка' : 'Линочка') + ')';
+              } else {
+                notifStatusBox.textContent = 'Статус: Разрешено в браузере, но нет подписки OneSignal — нажмите «Включить уведомления»';
+              }
+            } catch (e) {}
+          });
           notifDot.classList.remove('hidden');
         } else if (perm === 'denied') {
           notifStatusBox.textContent = 'Статус: Уведомления запрещены в настройках браузера ❌';
@@ -2015,7 +2026,7 @@
           const basePath = new URL('./', window.location.href).pathname;
           await OneSignal.init({
             appId: ONESIGNAL_APP_ID,
-            serviceWorkerPath: basePath + 'OneSignalSDKWorker.js',
+            serviceWorkerPath: 'OneSignalSDKWorker.js',
             serviceWorkerParam: { scope: basePath },
             notifyButton: { enable: false }
           });
@@ -2056,8 +2067,15 @@
               contents: { en: bodyText, ru: bodyText },
               url: window.location.href
             })
+          }).then(async (res) => {
+            if (!res.ok) {
+              const txt = await res.text().catch(() => '');
+              showToast('OneSignal ошибка ' + res.status + ': ' + txt.slice(0, 60));
+            }
           });
-        } catch (e) {}
+        } catch (e) {
+          showToast('Ошибка отправки Push (проверьте сеть/VPN)');
+        }
       }
 
       function chooseRole(role) {
