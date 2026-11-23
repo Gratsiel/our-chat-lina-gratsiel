@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.3</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.4</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -1181,6 +1181,8 @@
         state.darkMode = !state.darkMode;
         saveState();
         applyTheme();
+      applyLockState();
+      updateNotifStatus();
       applyCustomLook();
       });
 
@@ -1411,7 +1413,312 @@
         openNotifModal();
       });
 
-      disconnectSyncBtn.addEventListener('click', () => {
+      saveSettingsBtn.addEventListener('click', () => {
+        state.wallpaper = document.getElementById('wallpaperSelect').value;
+        state.quickEmoji = document.getElementById('quickEmojiSelect').value;
+        state.anniversaryDate = anniversaryInput.value || defaultState.anniversaryDate;
+        state.lockPin = document.getElementById('lockPinInput').value.trim();
+        state.hideNotifText = document.getElementById('hideNotifTextInput').checked;
+        saveState();
+        applyCustomLook();
+        renderHeader();
+        renderMessages();
+        renderCalendar();
+        settingsModal.classList.add('hidden');
+        showToast('Настройки сохранены');
+      });
+
+      openResetConfirmBtn.addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        resetModal.classList.remove('hidden');
+      });
+      cancelResetBtn.addEventListener('click', () => resetModal.classList.add('hidden'));
+      confirmResetBtn.addEventListener('click', () => {
+        resetModal.classList.add('hidden');
+        state.resetVotes = state.resetVotes || { me: false, partner: false };
+        state.resetVotes[state.activeRole || 'me'] = true;
+        if (state.resetVotes.me && state.resetVotes.partner) {
+          performMutualReset();
+        } else {
+          saveState();
+          renderResetBanner();
+          showToast('Запрос на очистку отправлен');
+        }
+      });
+
+      // ONLINE SYNC + E2EE (AES-256-GCM)
+      const syncBtn = document.getElementById('syncBtn');
+      const syncDot = document.getElementById('syncDot');
+      const syncBtnLabel = document.getElementById('syncBtnLabel');
+      const syncModal = document.getElementById('syncModal');
+      const closeSyncBtn = document.getElementById('closeSyncBtn');
+      const firebaseUrlInput = document.getElementById('firebaseUrlInput');
+      const roomCodeInput = document.getElementById('roomCodeInput');
+      const e2eeKeyInput = document.getElementById('e2eeKeyInput');
+      const syncStatusBox = document.getElementById('syncStatusBox');
+      const connectSyncBtn = document.getElementById('connectSyncBtn');
+      const disconnectSyncBtn = document.getElementById('disconnectSyncBtn');
+
+      let syncTimer = null;
+
+      function getFirebaseEndpoint() {
+        const base = (state.firebaseUrl || '').trim().replace(/\/+$/, '');
+        const room = (state.roomCode || 'love').trim().replace(/[^a-zA-Z0-9_-]/g, '') || 'love';
+        const normBase = base.replace(/^https:\/\//i, 'https://');
+        if (!normBase.startsWith('https://')) return null;
+        return `${normBase}/rooms/${room}.json`;
+      }
+
+      function updateSyncUI(connected, statusText) {
+        if (connected) {
+          syncDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+          syncBtnLabel.textContent = state.e2eeKey ? 'E2EE 🔐' : 'Онлайн';
+          syncStatusBox.textContent = statusText || 'Статус: Подключено к Firebase';
+        } else {
+          syncDot.className = 'w-2 h-2 rounded-full bg-gray-400';
+          syncBtnLabel.textContent = 'Офлайн';
+          syncStatusBox.textContent = statusText || 'Статус: Локальный режим (без сервера)';
+        }
+      }
+
+      async function deriveAesKey(passphrase, saltStr) {
+        const enc = new TextEncoder();
+        const keyMaterial = await window.crypto.subtle.importKey(
+          'raw',
+          enc.encode(passphrase),
+          'PBKDF2',
+          false,
+          ['deriveKey']
+        );
+        return window.crypto.subtle.deriveKey(
+          {
+            name: 'PBKDF2',
+            salt: enc.encode('couple-messenger-' + saltStr),
+            iterations: 100000,
+            hash: 'SHA-256'
+          },
+          keyMaterial,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      }
+
+      async function encryptPayload(obj, passphrase, room) {
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveAesKey(passphrase, room);
+        const encoded = new TextEncoder().encode(JSON.stringify(obj));
+        const cipher = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+        const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+        return { encrypted: true, iv: toB64(iv), ct: toB64(cipher), updatedAt: Date.now() };
+      }
+
+      async function decryptPayload(data, passphrase, room) {
+        const fromB64 = (str) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+        const key = await deriveAesKey(passphrase, room);
+        const plain = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: fromB64(data.iv) },
+          key,
+          fromB64(data.ct)
+        );
+        return JSON.parse(new TextDecoder().decode(plain));
+      }
+
+      async function pushToFirebase() {
+        const url = getFirebaseEndpoint();
+        if (!url) return;
+        try {
+          const rawPayload = {
+            messages: state.messages,
+            plans: state.plans,
+            resetVotes: state.resetVotes || { me: false, partner: false },
+            updatedAt: Date.now()
+          };
+          let bodyObj = rawPayload;
+          if ((state.e2eeKey || '').trim() && window.crypto && window.crypto.subtle) {
+            bodyObj = await encryptPayload(rawPayload, state.e2eeKey.trim(), state.roomCode || 'love');
+          }
+          const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyObj)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          updateSyncUI(true, state.e2eeKey ? 'Статус: Зашифровано (AES-256) 🔐' : 'Статус: Синхронизировано');
+        } catch (err) {
+          updateSyncUI(false, 'Ошибка отправки: проверьте URL и правила Firebase');
+        }
+      }
+
+      async function pullFromFirebase() {
+        const url = getFirebaseEndpoint();
+        if (!url) return;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          let data = await res.json();
+          if (data && data.encrypted && data.iv && data.ct) {
+            if (!(state.e2eeKey || '').trim()) {
+              updateSyncUI(false, 'Данные зашифрованы: введите секретный ключ E2EE');
+              return;
+            }
+            try {
+              data = await decryptPayload(data, state.e2eeKey.trim(), state.roomCode || 'love');
+            } catch (decErr) {
+              updateSyncUI(false, 'Неверный ключ E2EE — не удалось расшифровать чат');
+              return;
+            }
+          }
+          if (data && Array.isArray(data.messages)) {
+            const remoteVotes = data.resetVotes || { me: false, partner: false };
+            const changed = JSON.stringify(data.messages) !== JSON.stringify(state.messages) ||
+                            JSON.stringify(data.plans || []) !== JSON.stringify(state.plans) ||
+                            JSON.stringify(remoteVotes) !== JSON.stringify(state.resetVotes || { me: false, partner: false });
+            if (changed) {
+              const hadMore = data.messages.length > state.messages.length;
+              state.messages = data.messages;
+              if (Array.isArray(data.plans)) state.plans = data.plans;
+              state.resetVotes = remoteVotes;
+              saveState(true);
+              renderResetBanner();
+              renderMessages();
+              renderPlans();
+              renderCalendar();
+              renderGallery();
+              renderTabs();
+              if (hadMore) playPopSound();
+            }
+          } else if (data === null) {
+            await pushToFirebase();
+          }
+          updateSyncUI(true, state.e2eeKey ? 'Статус: Подключено 🔐 (E2EE AES-256)' : 'Статус: Подключено (без E2EE)');
+        } catch (err) {
+          updateSyncUI(false, 'Ошибка подключения: проверьте HTTPS URL и правила');
+        }
+      }
+
+      syncBtn.addEventListener('click', () => {
+        firebaseUrlInput.value = state.firebaseUrl || '';
+        roomCodeInput.value = state.roomCode || 'love';
+        e2eeKeyInput.value = state.e2eeKey || '';
+        syncModal.classList.remove('hidden');
+      });
+      closeSyncBtn.addEventListener('click', () => syncModal.classList.add('hidden'));
+      syncModal.addEventListener('click', (e) => {
+        if (e.target === syncModal) syncModal.classList.add('hidden');
+      });
+
+      connectSyncBtn.addEventListener('click', () => {
+        const url = firebaseUrlInput.value.trim().replace(/^https:\/\//i, 'https://');
+        if (!url.startsWith('https://')) {
+          showToast('Введите корректный https:// URL Firebase');
+          return;
+        }
+        state.firebaseUrl = url;
+        state.roomCode = roomCodeInput.value.trim() || 'love';
+        state.e2eeKey = e2eeKeyInput.value;
+        origSaveState();
+        syncModal.classList.add('hidden');
+        startSyncLoop();
+        showToast(state.e2eeKey ? 'Подключено с шифрованием E2EE 🔐' : 'Подключено к Firebase');
+      });
+
+      // TELEGRAM NOTIFICATIONS
+      const notifBtn = document.getElementById('notifBtn');
+      const notifDot = document.getElementById('notifDot');
+      const notifModal = document.getElementById('notifModal');
+      const closeNotifBtn = document.getElementById('closeNotifBtn');
+      const notifStatusBox = document.getElementById('notifStatusBox');
+      const enableNotifBtn = document.getElementById('enableNotifBtn');
+      const testNotifBtn = document.getElementById('testNotifBtn');
+      const tgTokenInput = document.getElementById('tgTokenInput');
+      const tgChatIdInput = document.getElementById('tgChatIdInput');
+
+      function updateNotifStatus() {
+        const hasTg = !!(state.tgBotToken && state.tgTargetChatId);
+        if (hasTg) {
+          notifStatusBox.textContent = 'Статус: Telegram-уведомления настроены ✅';
+          notifDot.classList.remove('hidden');
+        } else {
+          notifStatusBox.textContent = 'Статус: Введите токен бота и ID получателя';
+          notifDot.classList.add('hidden');
+        }
+      }
+
+      notifBtn.addEventListener('click', openNotifModal);
+      closeNotifBtn.addEventListener('click', () => notifModal.classList.add('hidden'));
+      notifModal.addEventListener('click', (e) => {
+        if (e.target === notifModal) notifModal.classList.add('hidden');
+      });
+
+      enableNotifBtn.addEventListener('click', () => {
+        state.tgBotToken = tgTokenInput.value.trim();
+        state.tgTargetChatId = tgChatIdInput.value.trim();
+        origSaveState();
+        updateNotifStatus();
+        if (state.tgBotToken && state.tgTargetChatId) {
+          notifModal.classList.add('hidden');
+          showToast('Telegram-уведомления сохранены ✅');
+        } else {
+          showToast('Заполните оба поля');
+        }
+      });
+
+      testNotifBtn.addEventListener('click', async () => {
+        state.tgBotToken = tgTokenInput.value.trim();
+        state.tgTargetChatId = tgChatIdInput.value.trim();
+        origSaveState();
+        updateNotifStatus();
+        if (!state.tgBotToken || !state.tgTargetChatId) {
+          showToast('Сначала введите токен бота и ID получателя');
+          return;
+        }
+        await sendTelegramPush(state.activeRole === 'me' ? state.myName : state.partnerName, 'Тестовое уведомление 💕');
+        showToast('Тест отправлен в Telegram!');
+      });
+
+      // LOCK SCREEN
+      const lockBtn = document.getElementById('lockBtn');
+      const lockScreen = document.getElementById('lockScreen');
+      const unlockForm = document.getElementById('unlockForm');
+      const unlockPinInput = document.getElementById('unlockPinInput');
+      const unlockError = document.getElementById('unlockError');
+
+      function applyLockState() {
+        if (state.isLocked && state.lockPin) {
+          lockScreen.classList.remove('hidden');
+          unlockPinInput.value = '';
+          unlockError.classList.add('hidden');
+        } else {
+          lockScreen.classList.add('hidden');
+        }
+      }
+
+      lockBtn.addEventListener('click', () => {
+        if (!state.lockPin) {
+          openSettings();
+          showToast('Задайте PIN-код в настройках для блокировки');
+          return;
+        }
+        state.isLocked = true;
+        origSaveState();
+        applyLockState();
+      });
+
+      unlockForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (unlockPinInput.value.trim() === state.lockPin) {
+          state.isLocked = false;
+          origSaveState();
+          applyLockState();
+        } else {
+          unlockError.classList.remove('hidden');
+          unlockPinInput.value = '';
+          unlockPinInput.focus();
+        }
+      });
+
+            disconnectSyncBtn.addEventListener('click', () => {
         clearInterval(syncTimer);
         state.firebaseUrl = '';
         origSaveState();
