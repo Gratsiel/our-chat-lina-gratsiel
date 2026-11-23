@@ -424,7 +424,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.6</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.7</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -1843,7 +1843,23 @@
         }
         state.isLocked = true;
         origSaveState();
-        const notifBtn = document.getElementById('notifBtn');
+        applyLockState();
+      });
+
+      unlockForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (unlockPinInput.value.trim() === state.lockPin) {
+          state.isLocked = false;
+          origSaveState();
+          applyLockState();
+        } else {
+          unlockError.classList.remove('hidden');
+          unlockPinInput.value = '';
+          unlockPinInput.focus();
+        }
+      });
+
+      const notifBtn = document.getElementById('notifBtn');
       const notifDot = document.getElementById('notifDot');
       const notifModal = document.getElementById('notifModal');
       const closeNotifBtn = document.getElementById('closeNotifBtn');
@@ -1940,22 +1956,6 @@
       });
 
       updateNotifStatus();
-      applyLockState();
-      });
-
-      unlockForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (unlockPinInput.value.trim() === state.lockPin) {
-          state.isLocked = false;
-          origSaveState();
-          applyLockState();
-        } else {
-          unlockError.classList.remove('hidden');
-          unlockPinInput.value = '';
-          unlockPinInput.focus();
-        }
-      });
-
       applyLockState();
       startSyncLoop();
         showToast('Подключаемся к Firebase...');
