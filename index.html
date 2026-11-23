@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Наш Мессенджер — Чат для двоих</title>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Наш Чат" />
+  <meta name="theme-color" content="#e11d48" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <style>
+    :root {
+      --bg-app: #fdf8f9;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f8eff2;
+      --bg-bubble-me: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%);
+      --bg-bubble-partner: #ffffff;
+      --text-primary: #1f1720;
+      --text-secondary: #6e5c66;
+      --border-soft: #f0dfe4;
+      --accent: #e11d48;
+    }
+    html.dark {
+      --bg-app: #141016;
+      --bg-surface: #1e1821;
+      --bg-subtle: #29202c;
+      --bg-bubble-me: linear-gradient(135deg, #be123c 0%, #e11d48 100%);
+      --bg-bubble-partner: #2a212e;
+      --text-primary: #f7eef2;
+      --text-secondary: #b09da8;
+      --border-soft: #352939;
+      --accent: #fb7185;
+    }
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      margin: 0;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+    .surface {
+      background-color: var(--bg-surface);
+      border-color: var(--border-soft);
+    }
+    .subtle-bg {
+      background-color: var(--bg-subtle);
+    }
+    .border-soft {
+      border-color: var(--border-soft);
+    }
+    .text-muted {
+      color: var(--text-secondary);
+    }
+    .bubble-me {
+      background: var(--bg-bubble-me);
+      color: #ffffff;
+    }
+    .bubble-partner {
+      background-color: var(--bg-bubble-partner);
+      color: var(--text-primary);
+      border: 1px solid var(--border-soft);
+    }
+    /* Custom scrollbar */
+    .chat-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .chat-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .chat-scroll::-webkit-scrollbar-thumb {
+      background: rgba(225, 29, 72, 0.2);
+      border-radius: 9999px;
+    }
+    .chat-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(225, 29, 72, 0.4);
+    }
+    @keyframes floatUp {
+      0% {
+        transform: translateY(0) scale(0.8);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-140px) scale(1.4);
+        opacity: 0;
+      }
+    }
+    .floating-heart {
+      position: fixed;
+      pointer-events: none;
+      z-index: 60;
+      animation: floatUp 1.3s ease-out forwards;
+    }
+    @keyframes msgPop {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    @media (display-mode: standalone) {
+      .app-footer {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
+      }
+    }
+    .msg-enter {
+      animation: msgPop 0.2s ease-out;
+    }
+  </style>
+</head>
+<body class="w-screen overflow-hidden flex flex-col items-center justify-center sm:p-4" style="height: 100dvh; max-height: 100dvh;">
+
+  <!-- Main App Shell -->
+  <div class="surface w-full h-full sm:max-w-4xl sm:h-[92vh] sm:rounded-3xl sm:border sm:shadow-2xl flex flex-col overflow-hidden relative">
+
+    <!-- Top Header -->
+    <header class="surface border-b border-soft px-3 sm:px-5 py-2.5 flex items-center justify-between gap-2 shrink-0 z-20">
+      <!-- Partner / Active Chat Info -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div id="headerAvatar" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0 shadow-sm bg-gradient-to-br from-rose-500 to-pink-600">
+          А
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <h1 id="headerName" class="font-semibold text-sm sm:text-base truncate">Любимая</h1>
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="В сети"></span>
+          </div>
+          <p id="headerStatus" class="text-xs text-muted truncate">В сети · Скучаю 💕</p>
+        </div>
+      </div>
+
+      <!-- Right Controls -->
+      <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <!-- Days Together Pill (hidden on very small screens, visible sm+) -->
+        <button id="daysTogetherBtn" type="button" class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full subtle-bg text-xs font-medium hover:opacity-80 transition cursor-pointer" title="Настроить дату начала отношений">
+          <span>❤️</span>
+          <span id="daysCountLabel">124 дня</span>
+        </button>
+
+        <!-- Role Switcher (Who am I typing as) -->
+        <div class="flex items-center subtle-bg rounded-full p-0.5 border border-soft" title="Переключить отправителя для теста">
+          <button id="roleMeBtn" type="button" class="px-2.5 py-1 rounded-full text-xs font-medium transition cursor-pointer">
+            Русечка
+          </button>
+          <button id="rolePartnerBtn" type="button" class="px-2.5 py-1 rounded-full text-xs font-medium transition cursor-pointer">
+            Линочка
+          </button>
+        </div>
+
+        <!-- Privacy Lock Button -->
+        <button id="lockBtn" type="button" class="p-1.5 sm:p-2 rounded-full hover:bg-rose-500/10 text-muted hover:text-rose-500 transition cursor-pointer" title="Заблокировать чат (PIN)" aria-label="Заблокировать">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </button>
+
+        <!-- Online Sync Toggle -->
+        <button id="syncBtn" type="button" class="flex items-center gap-1 px-2 py-1.5 rounded-full subtle-bg text-xs font-medium text-muted hover:text-rose-500 transition cursor-pointer" title="Подключить синхронизацию (Firebase)">
+          <span id="syncDot" class="w-2 h-2 rounded-full bg-gray-400"></span>
+          <span class="hidden sm:inline" id="syncBtnLabel">Офлайн</span>
+        </button>
+
+        <!-- Install PWA / Fullscreen App Button -->
+        <button id="installAppBtn" type="button" class="p-1.5 sm:p-2 rounded-full hover:bg-rose-500/10 text-muted hover:text-rose-500 transition cursor-pointer" title="Открыть как приложение (без адресной строки)" aria-label="Установить приложение">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 3v12"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <path d="M5 20h14"></path>
+          </svg>
+        </button>
+
+        <!-- Search Toggle -->
+        <button id="searchToggleBtn" type="button" class="p-1.5 sm:p-2 rounded-full hover:bg-rose-500/10 text-muted hover:text-rose-500 transition cursor-pointer" title="Поиск по сообщениям" aria-label="Поиск">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+
+        <!-- Notifications Button -->
+        <button id="notifBtn" type="button" class="p-1.5 sm:p-2 rounded-full hover:bg-rose-500/10 text-muted hover:text-rose-500 transition cursor-pointer relative" title="Уведомления (iOS / Android)" aria-label="Уведомления">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span id="notifDot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500"></span>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="soundToggleBtn" type="button" class="p-1.5 sm:p-2 rounded-full hover:bg-rose-500/10 text-muted hover:text-rose-500 transition cursor-pointer" title="Звук сообщений" aria-label="Звук">
+          <svg id="soundOnIcon" class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <svg id="soundOffIcon" class="w-4 h-4 sm:w-5 sm:h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" type="button" class="p-1.5 sm:p-2 rounded-full hover:bg-rose-500/10 text-muted hover:text-rose-500 transition cursor-pointer" title="Сменить тему" aria-label="Тема">
+          <svg id="moonIcon" class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg id="sunIcon" class="w-4 h-4 sm:w-5 sm:h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+
+        <!-- Settings Modal Button -->
+        <button id="settingsBtn" type="button" class="p-1.5 sm:p-2 rounded-full hover:bg-rose-500/10 text-muted hover:text-rose-500 transition cursor-pointer" title="Настройки пары" aria-label="Настройки">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="surface border-b border-soft px-3 sm:px-5 flex items-center gap-4 text-xs sm:text-sm font-medium shrink-0">
+      <button id="tabChat" type="button" class="py-2.5 border-b-2 border-rose-500 text-rose-500 flex items-center gap-1.5 cursor-pointer transition">
+        <span>💬</span>
+        <span>Чат</span>
+      </button>
+      <button id="tabPlans" type="button" class="py-2.5 border-b-2 border-transparent text-muted hover:text-rose-500 flex items-center gap-1.5 cursor-pointer transition">
+        <span>✨</span>
+        <span>Наши планы</span>
+        <span id="plansBadge" class="px-1.5 py-0.5 text-[10px] rounded-full subtle-bg">0</span>
+      </button>
+      <button id="tabMoments" type="button" class="py-2.5 border-b-2 border-transparent text-muted hover:text-rose-500 flex items-center gap-1.5 cursor-pointer transition">
+        <span>📸</span>
+        <span>Галерея</span>
+      </button>
+    </nav>
+
+    <!-- Search Bar (Collapsible) -->
+    <div id="searchBar" class="hidden surface border-b border-soft px-3 sm:px-5 py-2 flex items-center gap-2 shrink-0">
+      <input id="searchInput" type="text" placeholder="Поиск по сообщениям..." class="w-full subtle-bg rounded-xl px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-400" />
+      <button id="clearSearchBtn" type="button" class="text-xs text-muted hover:text-rose-500 px-2 py-1 cursor-pointer">Сброс</button>
+    </div>
+
+    <!-- VIEW 1: CHAT -->
+    <main id="chatView" class="flex-1 flex flex-col min-h-0 relative">
+      <!-- Messages Area -->
+      <div id="messagesContainer" class="flex-1 overflow-y-auto chat-scroll p-3 sm:p-5 space-y-3">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Typing Indicator -->
+      <div id="typingIndicator" class="hidden px-4 py-1 text-xs text-muted italic">
+        Печатает сообщение...
+      </div>
+
+      <!-- Reply Preview Bar -->
+      <div id="replyBar" class="hidden surface border-t border-soft px-3 sm:px-5 py-2 flex items-center justify-between gap-2">
+        <div class="border-l-2 border-rose-500 pl-2.5 min-w-0">
+          <p id="replyAuthor" class="text-xs font-semibold text-rose-500"></p>
+          <p id="replyText" class="text-xs text-muted truncate"></p>
+        </div>
+        <button id="cancelReplyBtn" type="button" class="p-1 text-muted hover:text-rose-500 cursor-pointer" aria-label="Отменить ответ">✕</button>
+      </div>
+
+      <!-- Emoji & Quick Phrases Drawer -->
+      <div id="emojiDrawer" class="hidden surface border-t border-soft px-3 sm:px-5 py-2.5 space-y-2 shrink-0">
+        <div class="flex flex-wrap gap-1.5" id="quickPhrasesContainer">
+          <!-- Quick romantic phrases -->
+        </div>
+        <div class="flex flex-wrap gap-1.5 pt-1 border-t border-soft" id="emojiListContainer">
+          <!-- Emojis -->
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <footer class="app-footer surface border-t border-soft px-2.5 pt-2.5 pb-12 sm:p-3.5 flex items-end gap-1.5 sm:gap-2 shrink-0">
+        <!-- Photo Upload -->
+        <label class="p-2.5 rounded-full subtle-bg text-muted hover:text-rose-500 cursor-pointer transition shrink-0" title="Отправить фото">
+          <input id="photoInput" type="file" accept="image/*" class="hidden" />
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+        </label>
+
+        <!-- Emoji / Quick Phrases Toggle -->
+        <button id="emojiToggleBtn" type="button" class="p-2.5 rounded-full subtle-bg text-muted hover:text-rose-500 cursor-pointer transition shrink-0" title="Смайлы и быстрые фразы" aria-label="Смайлы">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+          </svg>
+        </button>
+
+        <!-- Textarea -->
+        <textarea id="messageInput" rows="1" placeholder="Напиши что-нибудь тёплое..." class="flex-1 subtle-bg rounded-2xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-rose-400 resize-none max-h-28 leading-snug"></textarea>
+
+        <!-- Quick Heart Button -->
+        <button id="sendHeartBtn" type="button" class="p-2.5 rounded-full subtle-bg text-rose-500 hover:bg-rose-500 hover:text-white cursor-pointer transition shrink-0" title="Отправить сердечко" aria-label="Сердечко">
+          ❤️
+        </button>
+
+        <!-- Send Button -->
+        <button id="sendBtn" type="button" class="p-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white cursor-pointer transition shrink-0 shadow-sm" title="Отправить" aria-label="Отправить">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </footer>
+    </main>
+
+    <!-- VIEW 2: PLANS / WISHLIST -->
+    <section id="plansView" class="hidden flex-1 overflow-y-auto chat-scroll p-4 sm:p-6 space-y-4">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <h2 class="font-bold text-base sm:text-lg">Наши планы и свидания</h2>
+          <p class="text-xs text-muted">Идеи, фильмы и места, куда хотим сходить вместе</p>
+        </div>
+      </div>
+
+      <form id="addPlanForm" class="flex gap-2">
+        <input id="planInput" type="text" placeholder="Например: Посмотреть фильм под пледом..." class="flex-1 subtle-bg rounded-xl px-3.5 py-2 text-sm outline-none focus:ring-2 focus:ring-rose-400" />
+        <button type="submit" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium cursor-pointer transition shrink-0">
+          Добавить
+        </button>
+      </form>
+
+      <div id="plansList" class="space-y-2">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- VIEW 3: GALLERY -->
+    <section id="momentsView" class="hidden flex-1 overflow-y-auto chat-scroll p-4 sm:p-6 space-y-4">
+      <div>
+        <h2 class="font-bold text-base sm:text-lg">Общая галерея</h2>
+        <p class="text-xs text-muted">Все фотографии, которыми вы поделились в чате</p>
+      </div>
+      <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base">Настройки вашего чата</h3>
+          <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
+        </div>
+
+        <div class="space-y-3 text-sm">
+          <div>
+            <label class="block text-xs text-muted mb-1">Ваше имя</label>
+            <input id="myNameInput" type="text" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Имя девушки</label>
+            <input id="partnerNameInput" type="text" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Её статус в шапке</label>
+            <input id="partnerStatusInput" type="text" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Дата начала отношений</label>
+            <input id="anniversaryInput" type="date" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">PIN-код для блокировки экрана (оставьте пустым, чтобы отключить)</label>
+            <input id="lockPinInput" type="password" inputmode="numeric" placeholder="Например: 1402" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-soft">
+          <button id="openResetConfirmBtn" type="button" class="text-xs text-rose-500 hover:underline cursor-pointer">
+            Очистить историю
+          </button>
+          <button id="saveSettingsBtn" type="button" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium cursor-pointer transition">
+            Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESET CONFIRMATION MODAL -->
+    <div id="resetModal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div class="surface border border-soft rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
+        <h3 class="font-bold text-base">Очистить переписку?</h3>
+        <p class="text-xs text-muted">Все сообщения и планы вернутся к начальному виду. Это действие нельзя отменить.</p>
+        <div class="flex justify-end gap-2">
+          <button id="cancelResetBtn" type="button" class="px-3.5 py-1.5 rounded-xl subtle-bg text-sm cursor-pointer">Отмена</button>
+          <button id="confirmResetBtn" type="button" class="px-3.5 py-1.5 rounded-xl bg-rose-500 text-white text-sm font-medium cursor-pointer">Очистить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIGHTBOX MODAL FOR PHOTOS -->
+    <div id="lightboxModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+      <button id="closeLightboxBtn" type="button" class="absolute top-4 right-4 text-white text-2xl cursor-pointer">✕</button>
+      <img id="lightboxImg" src="" alt="Фото" class="max-w-full max-h-[85vh] rounded-2xl shadow-2xl" />
+    </div>
+
+    <!-- ONLINE SYNC MODAL (Firebase HTTPS) -->
+    <div id="syncModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base">Онлайн-чат для 2 устройств</h3>
+          <button id="closeSyncBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
+        </div>
+        <p class="text-xs text-muted leading-relaxed">
+          Чтобы общаться в реальном времени с разных телефонов или компьютеров, вставьте URL вашей бесплатной базы <strong>Firebase Realtime Database</strong> (например, <span class="font-mono">https://my-chat-default-rtdb.firebaseio.com</span>) и общий код комнаты.
+        </p>
+        <div class="space-y-3 text-sm">
+          <div>
+            <label class="block text-xs text-muted mb-1">Firebase Database URL (https://...)</label>
+            <input id="firebaseUrlInput" type="url" placeholder="https://your-project-default-rtdb.firebaseio.com" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Код вашей комнаты (секретное слово)</label>
+            <input id="roomCodeInput" type="text" placeholder="например: love2026" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">🔐 Секретный ключ шифрования (E2EE AES-256)</label>
+            <input id="e2eeKeyInput" type="password" placeholder="Общая секретная фраза только для вас двоих" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
+            <p class="text-[11px] text-muted mt-1">Сообщения и фото шифруются на вашем устройстве до отправки в базу.</p>
+          </div>
+          <div id="syncStatusBox" class="text-xs px-3 py-2 rounded-xl subtle-bg text-muted">
+            Статус: Локальный режим (без сервера)
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-2 border-t border-soft">
+          <button id="disconnectSyncBtn" type="button" class="text-xs text-rose-500 hover:underline cursor-pointer">Отключиться</button>
+          <button id="connectSyncBtn" type="button" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium cursor-pointer transition">
+            Подключить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRIVACY LOCK SCREEN -->
+    <div id="lockScreen" class="hidden fixed inset-0 z-50 surface flex flex-col items-center justify-center p-6 text-center">
+      <div class="w-16 h-16 rounded-full subtle-bg flex items-center justify-center text-3xl mb-4 shadow-sm">🔒</div>
+      <h2 class="font-bold text-lg mb-1">Чат заблокирован</h2>
+      <p class="text-xs text-muted mb-5 max-w-xs">Введите ваш секретный PIN-код, чтобы открыть переписку</p>
+      <form id="unlockForm" class="w-full max-w-xs space-y-3">
+        <input id="unlockPinInput" type="password" inputmode="numeric" placeholder="Введите PIN-код..." class="w-full subtle-bg rounded-xl px-4 py-2.5 text-center text-base tracking-widest outline-none focus:ring-2 focus:ring-rose-400" />
+        <p id="unlockError" class="hidden text-xs text-rose-500">Неверный PIN-код</p>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium cursor-pointer transition">
+          Разблокировать
+        </button>
+      </form>
+    </div>
+
+    <!-- NOTIFICATIONS MODAL (iOS & Android) -->
+    <div id="notifModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base">🔔 Уведомления (iOS и Android)</h3>
+          <button id="closeNotifBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
+        </div>
+
+        <div id="notifStatusBox" class="text-xs px-3 py-2 rounded-xl subtle-bg text-muted">
+          Статус: Проверка...
+        </div>
+
+        <div class="space-y-2 text-xs text-muted leading-relaxed">
+          <div class="p-3 rounded-xl subtle-bg space-y-1">
+            <p class="font-semibold text-rose-500">📱 Для девушки (iPhone / iOS 16.4+):</p>
+            <p>1. Откройте сайт в <strong>Safari</strong> и нажмите кнопку <strong>«Поделиться»</strong> (квадрат со стрелкой вверх).</p>
+            <p>2. Выберите <strong>«На экран «Домой»»</strong> и откройте мессенджер с рабочего стола.</p>
+            <p>3. Нажмите кнопку <strong>«Включить уведомления»</strong> ниже.</p>
+          </div>
+          <div class="p-3 rounded-xl subtle-bg space-y-1">
+            <p class="font-semibold text-emerald-600">🤖 Для вас (Android / Chrome):</p>
+            <p>Нажмите <strong>«Включить уведомления»</strong> и разрешите показ в браузере (можно также добавить на главный экран через меню Chrome).</p>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 pt-2 border-t border-soft">
+          <button id="testNotifBtn" type="button" class="px-3 py-2 rounded-xl subtle-bg text-xs font-medium hover:opacity-80 cursor-pointer">
+            Тест уведомления
+          </button>
+          <button id="enableNotifBtn" type="button" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium cursor-pointer transition">
+            Включить уведомления
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSTALL APP MODAL (Fullscreen without address bar) -->
+    <div id="installModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-base">📲 Установить как приложение</h3>
+          <button id="closeInstallBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
+        </div>
+        <p class="text-xs text-muted leading-relaxed">
+          После установки на главный экран мессенджер будет открываться <strong>на весь экран без адресной строки</strong> — как обычное приложение.
+        </p>
+        <div class="space-y-2 text-xs text-muted leading-relaxed">
+          <div class="p-3 rounded-xl subtle-bg space-y-1">
+            <p class="font-semibold text-emerald-600">🤖 На Android (Chrome):</p>
+            <p>Нажмите кнопку <strong>«Установить сейчас»</strong> ниже или в меню браузера (⋮) выберите <strong>«Добавить на гл. экран» / «Установить приложение»</strong>.</p>
+          </div>
+          <div class="p-3 rounded-xl subtle-bg space-y-1">
+            <p class="font-semibold text-rose-500">📱 На iPhone (Safari):</p>
+            <p>Нажмите <strong>«Поделиться»</strong> (внизу по центру) → <strong>«На экран «Домой»»</strong> → откройте иконку с рабочего стола.</p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-soft">
+          <button id="nativeInstallBtn" type="button" class="hidden px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium cursor-pointer transition">
+            Установить сейчас
+          </button>
+          <button id="okInstallBtn" type="button" class="px-4 py-2 rounded-xl subtle-bg text-sm font-medium cursor-pointer">
+            Понятно
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-xs px-4 py-2 rounded-full shadow-lg"></div>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = 'couple_messenger_state_v3';
+
+      const QUICK_PHRASES = [
+        'Люблю тебя ❤️',
+        'Скучаю 💕',
+        'Как ты, солнце?',
+        'Доброе утро ☀️',
+        'Спокойной ночи 🌙',
+        'Что закажем на ужин? 🍕'
+      ];
+      const EMOJIS = ['❤️', '😘', '😍', '🥰', '💕', '🔥', '😂', '🥺', '✨', '🌹', '🍕', '☕', '🎬', '🌙'];
+      const REACTIONS = ['❤️', '😂', '😍', '🔥', '🥺'];
+
+      const defaultState = {
+        activeRole: 'me', // 'me' or 'partner'
+        darkMode: false,
+        soundEnabled: true,
+        myName: 'Русечка',
+        partnerName: 'Линочка',
+        partnerStatus: 'В сети · Скучаю 💕',
+        anniversaryDate: '2026-07-22',
+        firebaseUrl: 'https://chat-lina-gratsiel-default-rtdb.europe-west1.firebasedatabase.app',
+        roomCode: 'love',
+        e2eeKey: '',
+        lockPin: '',
+        isLocked: false,
+        messages: [
+          {
+            id: 'm1',
+            sender: 'partner',
+            text: 'Привет! Как проходит твой день? 💕',
+            time: '10:15',
+            reactions: ['❤️'],
+            replyTo: null,
+            image: null
+          },
+          {
+            id: 'm2',
+            sender: 'me',
+            text: 'Привет, родная! Всё супер, но уже соскучился. Во сколько встретимся вечером?',
+            time: '10:17',
+            reactions: ['🥰'],
+            replyTo: null,
+            image: null
+          },
+          {
+            id: 'm3',
+            sender: 'partner',
+            text: 'Освобожусь к 19:00! Можем зайти за кофе и погулять по парку ☕✨',
+            time: '10:18',
+            reactions: [],
+            replyTo: null,
+            image: null
+          }
+        ],
+        plans: [
+          { id: 'p1', text: 'Вечерняя прогулка с кофе ☕', done: false, by: 'Линочка' },
+          { id: 'p2', text: 'Посмотреть новый фильм под пледом 🎬', done: true, by: 'Русечка' },
+          { id: 'p3', text: 'Приготовить вместе пасту карбонара 🍝', done: false, by: 'Русечка' }
+        ]
+      };
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return JSON.parse(JSON.stringify(defaultState));
+          const parsed = JSON.parse(raw);
+          return Object.assign(JSON.parse(JSON.stringify(defaultState)), parsed);
+        } catch (e) {
+          return JSON.parse(JSON.stringify(defaultState));
+        }
+      }
+
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+          // Ignore storage quota / sandbox errors
+        }
+      }
+
+      let state = loadState();
+      let currentTab = 'chat';
+      let searchQuery = '';
+      let replyingTo = null;
+      let activeReactionMsgId = null;
+
+      // DOM Elements
+      const headerAvatar = document.getElementById('headerAvatar');
+      const headerName = document.getElementById('headerName');
+      const headerStatus = document.getElementById('headerStatus');
+      const daysTogetherBtn = document.getElementById('daysTogetherBtn');
+      const daysCountLabel = document.getElementById('daysCountLabel');
+      const roleMeBtn = document.getElementById('roleMeBtn');
+      const rolePartnerBtn = document.getElementById('rolePartnerBtn');
+
+      const tabChat = document.getElementById('tabChat');
+      const tabPlans = document.getElementById('tabPlans');
+      const tabMoments = document.getElementById('tabMoments');
+      const plansBadge = document.getElementById('plansBadge');
+
+      const chatView = document.getElementById('chatView');
+      const plansView = document.getElementById('plansView');
+      const momentsView = document.getElementById('momentsView');
+
+      const searchToggleBtn = document.getElementById('searchToggleBtn');
+      const searchBar = document.getElementById('searchBar');
+      const searchInput = document.getElementById('searchInput');
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+      const soundToggleBtn = document.getElementById('soundToggleBtn');
+      const soundOnIcon = document.getElementById('soundOnIcon');
+      const soundOffIcon = document.getElementById('soundOffIcon');
+
+      const themeToggleBtn = document.getElementById('themeToggleBtn');
+      const moonIcon = document.getElementById('moonIcon');
+      const sunIcon = document.getElementById('sunIcon');
+
+      const messagesContainer = document.getElementById('messagesContainer');
+      const replyBar = document.getElementById('replyBar');
+      const replyAuthor = document.getElementById('replyAuthor');
+      const replyText = document.getElementById('replyText');
+      const cancelReplyBtn = document.getElementById('cancelReplyBtn');
+
+      const emojiToggleBtn = document.getElementById('emojiToggleBtn');
+      const emojiDrawer = document.getElementById('emojiDrawer');
+      const quickPhrasesContainer = document.getElementById('quickPhrasesContainer');
+      const emojiListContainer = document.getElementById('emojiListContainer');
+
+      const messageInput = document.getElementById('messageInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const sendHeartBtn = document.getElementById('sendHeartBtn');
+      const photoInput = document.getElementById('photoInput');
+
+      const addPlanForm = document.getElementById('addPlanForm');
+      const planInput = document.getElementById('planInput');
+      const plansList = document.getElementById('plansList');
+      const galleryGrid = document.getElementById('galleryGrid');
+
+      const settingsBtn = document.getElementById('settingsBtn');
+      const settingsModal = document.getElementById('settingsModal');
+      const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+      const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+      const myNameInput = document.getElementById('myNameInput');
+      const partnerNameInput = document.getElementById('partnerNameInput');
+      const partnerStatusInput = document.getElementById('partnerStatusInput');
+      const anniversaryInput = document.getElementById('anniversaryInput');
+
+      const openResetConfirmBtn = document.getElementById('openResetConfirmBtn');
+      const resetModal = document.getElementById('resetModal');
+      const cancelResetBtn = document.getElementById('cancelResetBtn');
+      const confirmResetBtn = document.getElementById('confirmResetBtn');
+
+      const lightboxModal = document.getElementById('lightboxModal');
+      const closeLightboxBtn = document.getElementById('closeLightboxBtn');
+      const lightboxImg = document.getElementById('lightboxImg');
+      const toast = document.getElementById('toast');
+
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.remove('hidden');
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => {
+          toast.classList.add('hidden');
+        }, 2200);
+      }
+
+      function playPopSound() {
+        if (!state.soundEnabled) return;
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(520, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(780, ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.12);
+        } catch (e) {}
+      }
+
+      function spawnFloatingHearts() {
+        for (let i = 0; i < 6; i++) {
+          const el = document.createElement('div');
+          el.className = 'floating-heart text-2xl';
+          el.textContent = i % 2 === 0 ? '❤️' : '💕';
+          el.style.left = (45 + (Math.random() * 40 - 20)) + '%';
+          el.style.bottom = '70px';
+          el.style.animationDelay = (i * 0.08) + 's';
+          document.body.appendChild(el);
+          setTimeout(() => el.remove(), 1600);
+        }
+      }
+
+      function getNowTime() {
+        const d = new Date();
+        return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      function calcDaysTogether() {
+        if (!state.anniversaryDate) return 1;
+        const start = new Date(state.anniversaryDate);
+        const now = new Date();
+        const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+        return Math.max(1, diff + 1);
+      }
+
+      function pluralDays(n) {
+        const mod10 = n % 10;
+        const mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return `${n} день`;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} дня`;
+        return `${n} дней`;
+      }
+
+      function applyTheme() {
+        if (state.darkMode) {
+          document.documentElement.classList.add('dark');
+          moonIcon.classList.add('hidden');
+          sunIcon.classList.remove('hidden');
+        } else {
+          document.documentElement.classList.remove('dark');
+          moonIcon.classList.remove('hidden');
+          sunIcon.classList.add('hidden');
+        }
+      }
+
+      function applySoundIcon() {
+        if (state.soundEnabled) {
+          soundOnIcon.classList.remove('hidden');
+          soundOffIcon.classList.add('hidden');
+        } else {
+          soundOnIcon.classList.add('hidden');
+          soundOffIcon.classList.remove('hidden');
+        }
+      }
+
+      function renderHeader() {
+        const isPartnerView = state.activeRole === 'partner';
+        const displayName = isPartnerView ? state.myName : state.partnerName;
+        headerName.textContent = displayName || 'Линочка';
+        headerAvatar.textContent = (displayName || 'Л').trim().charAt(0).toUpperCase();
+        headerStatus.textContent = isPartnerView ? 'В сети · Пишешь как Линочка' : state.partnerStatus;
+        daysCountLabel.textContent = pluralDays(calcDaysTogether());
+
+        if (state.activeRole === 'me') {
+          roleMeBtn.className = 'px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500 text-white transition cursor-pointer';
+          rolePartnerBtn.className = 'px-2.5 py-1 rounded-full text-xs font-medium text-muted hover:text-rose-500 transition cursor-pointer';
+        } else {
+          rolePartnerBtn.className = 'px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500 text-white transition cursor-pointer';
+          roleMeBtn.className = 'px-2.5 py-1 rounded-full text-xs font-medium text-muted hover:text-rose-500 transition cursor-pointer';
+        }
+      }
+
+      function renderTabs() {
+        const tabs = [
+          { el: tabChat, view: chatView, key: 'chat' },
+          { el: tabPlans, view: plansView, key: 'plans' },
+          { el: tabMoments, view: momentsView, key: 'moments' }
+        ];
+        tabs.forEach(t => {
+          if (t.key === currentTab) {
+            t.el.classList.add('border-rose-500', 'text-rose-500');
+            t.el.classList.remove('border-transparent', 'text-muted');
+            t.view.classList.remove('hidden');
+          } else {
+            t.el.classList.remove('border-rose-500', 'text-rose-500');
+            t.el.classList.add('border-transparent', 'text-muted');
+            t.view.classList.add('hidden');
+          }
+        });
+        const openPlansCount = state.plans.filter(p => !p.done).length;
+        plansBadge.textContent = openPlansCount;
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function renderMessages() {
+        const q = searchQuery.trim().toLowerCase();
+        const filtered = q
+          ? state.messages.filter(m => (m.text || '').toLowerCase().includes(q))
+          : state.messages;
+
+        if (filtered.length === 0) {
+          messagesContainer.innerHTML = `
+            <div class="h-full flex flex-col items-center justify-center text-center text-muted py-12">
+              <div class="text-4xl mb-2">💌</div>
+              <p class="text-sm font-medium">${q ? 'Ничего не найдено' : 'Пока нет сообщений'}</p>
+              <p class="text-xs mt-1">${q ? 'Попробуй другой запрос' : 'Напиши первое тёплое сообщение!'}</p>
+            </div>
+          `;
+          return;
+        }
+
+        let html = `
+          <div class="flex justify-center my-2">
+            <span class="px-3 py-1 rounded-full subtle-bg text-[11px] text-muted font-medium">Сегодня</span>
+          </div>
+        `;
+
+        filtered.forEach(msg => {
+          const isMineFromActiveRole = msg.sender === state.activeRole;
+          const alignClass = isMineFromActiveRole ? 'justify-end' : 'justify-start';
+          const bubbleClass = isMineFromActiveRole ? 'bubble-me rounded-2xl rounded-br-sm' : 'bubble-partner rounded-2xl rounded-bl-sm';
+          const senderLabel = msg.sender === 'me' ? state.myName : state.partnerName;
+
+          let replyBlock = '';
+          if (msg.replyTo) {
+            replyBlock = `
+              <div class="mb-1.5 px-2.5 py-1 rounded-lg text-xs ${isMineFromActiveRole ? 'bg-white/20 text-white' : 'subtle-bg text-muted'} border-l-2 ${isMineFromActiveRole ? 'border-white' : 'border-rose-500'}">
+                <div class="font-semibold text-[11px]">${escapeHtml(msg.replyTo.author)}</div>
+                <div class="truncate max-w-[200px]">${escapeHtml(msg.replyTo.text)}</div>
+              </div>
+            `;
+          }
+
+          let imageBlock = '';
+          if (msg.image) {
+            imageBlock = `
+              <img src="${msg.image}" alt="Фото" data-action="lightbox" data-src="${msg.image}" class="rounded-xl max-h-56 w-auto object-cover mb-1.5 cursor-pointer hover:opacity-95 transition" />
+            `;
+          }
+
+          let reactionsBlock = '';
+          if (msg.reactions && msg.reactions.length > 0) {
+            reactionsBlock = `
+              <div class="flex flex-wrap gap-1 mt-1 ${isMineFromActiveRole ? 'justify-end' : 'justify-start'}">
+                ${msg.reactions.map(r => `<span class="px-1.5 py-0.5 rounded-full text-xs surface border border-soft shadow-xs">${r}</span>`).join('')}
+              </div>
+            `;
+          }
+
+          const pickerOpen = activeReactionMsgId === msg.id;
+          const reactionPicker = pickerOpen ? `
+            <div class="flex items-center gap-1 surface border border-soft rounded-full px-2 py-1 shadow-lg mt-1 ${isMineFromActiveRole ? 'self-end' : 'self-start'}">
+              ${REACTIONS.map(r => `<button type="button" data-action="react" data-id="${msg.id}" data-emoji="${r}" class="hover:scale-125 transition text-sm cursor-pointer">${r}</button>`).join('')}
+              <button type="button" data-action="reply" data-id="${msg.id}" class="ml-1 pl-1.5 border-l border-soft text-[11px] text-muted hover:text-rose-500 cursor-pointer">Ответить</button>
+            </div>
+          ` : '';
+
+          html += `
+            <div class="flex ${alignClass} msg-enter group">
+              <div class="max-w-[82%] sm:max-w-[70%] flex flex-col ${isMineFromActiveRole ? 'items-end' : 'items-start'}">
+                <div class="flex items-end gap-1.5 ${isMineFromActiveRole ? 'flex-row-reverse' : 'flex-row'}">
+                  <div class="${bubbleClass} px-3.5 py-2 shadow-xs relative cursor-pointer" data-action="toggle-actions" data-id="${msg.id}" title="Нажми для реакции или ответа">
+                    ${replyBlock}
+                    ${imageBlock}
+                    ${msg.text ? `<p class="text-sm whitespace-pre-wrap break-words leading-relaxed">${escapeHtml(msg.text)}</p>` : ''}
+                    <div class="flex items-center justify-end gap-1 mt-1 text-[10px] ${isMineFromActiveRole ? 'text-white/80' : 'text-muted'}">
+                      <span>${msg.time}</span>
+                      ${isMineFromActiveRole ? '<span>✓✓</span>' : ''}
+                    </div>
+                  </div>
+                  <button type="button" data-action="reply" data-id="${msg.id}" class="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 text-muted hover:text-rose-500 transition text-xs cursor-pointer" title="Ответить">↩</button>
+                </div>
+                ${reactionsBlock}
+                ${reactionPicker}
+              </div>
+            </div>
+          `;
+        });
+
+        messagesContainer.innerHTML = html;
+        if (!q) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      }
+
+      function renderPlans() {
+        if (state.plans.length === 0) {
+          plansList.innerHTML = `<p class="text-sm text-muted text-center py-8">Список пока пуст. Добавьте первую идею для свидания!</p>`;
+          return;
+        }
+        plansList.innerHTML = state.plans.map(p => `
+          <div class="surface border border-soft rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3">
+            <label class="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+              <input type="checkbox" data-action="toggle-plan" data-id="${p.id}" ${p.done ? 'checked' : ''} class="w-4 h-4 accent-rose-500 rounded cursor-pointer shrink-0" />
+              <div class="min-w-0">
+                <p class="text-sm ${p.done ? 'line-through text-muted' : ''} break-words">${escapeHtml(p.text)}</p>
+                <p class="text-[11px] text-muted">Добавил(а): ${escapeHtml(p.by)}</p>
+              </div>
+            </label>
+            <button type="button" data-action="delete-plan" data-id="${p.id}" class="text-xs text-muted hover:text-rose-500 p-1 cursor-pointer" title="Удалить">✕</button>
+          </div>
+        `).join('');
+      }
+
+      function renderGallery() {
+        const photos = state.messages.filter(m => m.image);
+        if (photos.length === 0) {
+          galleryGrid.innerHTML = `
+            <div class="col-span-full text-center py-12 text-muted">
+              <div class="text-4xl mb-2">📷</div>
+              <p class="text-sm font-medium">В галерее пока пусто</p>
+              <p class="text-xs mt-1">Отправьте фото в чате через кнопку 🖼️</p>
+            </div>
+          `;
+          return;
+        }
+        galleryGrid.innerHTML = photos.map(m => `
+          <div class="relative group rounded-2xl overflow-hidden border border-soft aspect-square cursor-pointer" data-action="lightbox" data-src="${m.image}">
+            <img src="${m.image}" alt="Момент" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 text-white text-[11px]">
+              ${escapeHtml(m.sender === 'me' ? state.myName : state.partnerName)} · ${m.time}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      function renderReplyBar() {
+        if (!replyingTo) {
+          replyBar.classList.add('hidden');
+          return;
+        }
+        replyBar.classList.remove('hidden');
+        replyAuthor.textContent = 'Ответ для: ' + replyingTo.author;
+        replyText.textContent = replyingTo.text || '📷 Фотография';
+      }
+
+      function sendMessage(text, imageData = null) {
+        const clean = (text || '').trim();
+        if (!clean && !imageData) return;
+
+        const msg = {
+          id: 'm' + Date.now() + '_' + Math.random().toString(16).slice(2, 6),
+          createdAt: Date.now(),
+          sender: state.activeRole,
+          text: clean,
+          time: getNowTime(),
+          reactions: [],
+          replyTo: replyingTo ? { author: replyingTo.author, text: replyingTo.text || '📷 Фотография' } : null,
+          image: imageData
+        };
+
+        state.messages.push(msg);
+        replyingTo = null;
+        activeReactionMsgId = null;
+        saveState();
+        renderReplyBar();
+        renderMessages();
+        renderGallery();
+        playPopSound();
+      }
+
+      function initEmojiDrawer() {
+        quickPhrasesContainer.innerHTML = QUICK_PHRASES.map(phrase => `
+          <button type="button" data-phrase="${escapeHtml(phrase)}" class="px-2.5 py-1 rounded-full subtle-bg hover:bg-rose-500 hover:text-white text-xs transition cursor-pointer">${escapeHtml(phrase)}</button>
+        `).join('');
+
+        emojiListContainer.innerHTML = EMOJIS.map(em => `
+          <button type="button" data-emoji="${em}" class="text-lg hover:scale-125 transition p-1 cursor-pointer">${em}</button>
+        `).join('');
+      }
+
+      // Event Listeners
+      roleMeBtn.addEventListener('click', () => {
+        state.activeRole = 'me';
+        activeReactionMsgId = null;
+        saveState();
+        renderHeader();
+        renderMessages();
+      });
+
+      rolePartnerBtn.addEventListener('click', () => {
+        state.activeRole = 'partner';
+        activeReactionMsgId = null;
+        saveState();
+        renderHeader();
+        renderMessages();
+      });
+
+      tabChat.addEventListener('click', () => {
+        currentTab = 'chat';
+        renderTabs();
+      });
+      tabPlans.addEventListener('click', () => {
+        currentTab = 'plans';
+        renderTabs();
+        renderPlans();
+      });
+      tabMoments.addEventListener('click', () => {
+        currentTab = 'moments';
+        renderTabs();
+        renderGallery();
+      });
+
+      searchToggleBtn.addEventListener('click', () => {
+        searchBar.classList.toggle('hidden');
+        if (!searchBar.classList.contains('hidden')) {
+          searchInput.focus();
+        } else {
+          searchQuery = '';
+          searchInput.value = '';
+          renderMessages();
+        }
+      });
+
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderMessages();
+      });
+
+      clearSearchBtn.addEventListener('click', () => {
+        searchQuery = '';
+        searchInput.value = '';
+        renderMessages();
+      });
+
+      soundToggleBtn.addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        saveState();
+        applySoundIcon();
+        showToast(state.soundEnabled ? 'Звук включён' : 'Звук выключен');
+      });
+
+      themeToggleBtn.addEventListener('click', () => {
+        state.darkMode = !state.darkMode;
+        saveState();
+        applyTheme();
+      });
+
+      emojiToggleBtn.addEventListener('click', () => {
+        emojiDrawer.classList.toggle('hidden');
+      });
+
+      quickPhrasesContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-phrase]');
+        if (!btn) return;
+        sendMessage(btn.dataset.phrase);
+        emojiDrawer.classList.add('hidden');
+      });
+
+      emojiListContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-emoji]');
+        if (!btn) return;
+        messageInput.value += btn.dataset.emoji;
+        messageInput.focus();
+      });
+
+      sendBtn.addEventListener('click', () => {
+        sendMessage(messageInput.value);
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+      });
+
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage(messageInput.value);
+          messageInput.value = '';
+          messageInput.style.height = 'auto';
+        }
+      });
+
+      messageInput.addEventListener('input', () => {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 112) + 'px';
+      });
+
+      sendHeartBtn.addEventListener('click', () => {
+        spawnFloatingHearts();
+        sendMessage('❤️');
+      });
+
+      photoInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          sendMessage(messageInput.value, ev.target.result);
+          messageInput.value = '';
+          photoInput.value = '';
+        };
+        reader.readAsDataURL(file);
+      });
+
+      cancelReplyBtn.addEventListener('click', () => {
+        replyingTo = null;
+        renderReplyBar();
+      });
+
+      // Delegated events on messages container
+      messagesContainer.addEventListener('click', (e) => {
+        const lightboxTarget = e.target.closest('[data-action="lightbox"]');
+        if (lightboxTarget) {
+          lightboxImg.src = lightboxTarget.dataset.src;
+          lightboxModal.classList.remove('hidden');
+          return;
+        }
+
+        const reactBtn = e.target.closest('button[data-action="react"]');
+        if (reactBtn) {
+          const msg = state.messages.find(m => m.id === reactBtn.dataset.id);
+          if (msg) {
+            const em = reactBtn.dataset.emoji;
+            const idx = msg.reactions.indexOf(em);
+            if (idx >= 0) msg.reactions.splice(idx, 1);
+            else msg.reactions.push(em);
+            activeReactionMsgId = null;
+            saveState();
+            renderMessages();
+          }
+          return;
+        }
+
+        const replyBtn = e.target.closest('button[data-action="reply"]');
+        if (replyBtn) {
+          const msg = state.messages.find(m => m.id === replyBtn.dataset.id);
+          if (msg) {
+            replyingTo = {
+              author: msg.sender === 'me' ? state.myName : state.partnerName,
+              text: msg.text
+            };
+            activeReactionMsgId = null;
+            renderReplyBar();
+            renderMessages();
+            messageInput.focus();
+          }
+          return;
+        }
+
+        const toggleEl = e.target.closest('[data-action="toggle-actions"]');
+        if (toggleEl) {
+          const id = toggleEl.dataset.id;
+          activeReactionMsgId = activeReactionMsgId === id ? null : id;
+          renderMessages();
+        }
+      });
+
+      // Plans events
+      addPlanForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = planInput.value.trim();
+        if (!text) return;
+        const author = state.activeRole === 'me' ? state.myName : state.partnerName;
+        state.plans.unshift({
+          id: 'p' + Date.now(),
+          text,
+          done: false,
+          by: author
+        });
+        planInput.value = '';
+        saveState();
+        renderPlans();
+        renderTabs();
+      });
+
+      plansList.addEventListener('click', (e) => {
+        const delBtn = e.target.closest('button[data-action="delete-plan"]');
+        if (delBtn) {
+          state.plans = state.plans.filter(p => p.id !== delBtn.dataset.id);
+          saveState();
+          renderPlans();
+          renderTabs();
+        }
+      });
+
+      plansList.addEventListener('change', (e) => {
+        const cb = e.target.closest('input[data-action="toggle-plan"]');
+        if (cb) {
+          const plan = state.plans.find(p => p.id === cb.dataset.id);
+          if (plan) {
+            plan.done = cb.checked;
+            saveState();
+            renderPlans();
+            renderTabs();
+          }
+        }
+      });
+
+      // Gallery lightbox
+      galleryGrid.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-action="lightbox"]');
+        if (card) {
+          lightboxImg.src = card.dataset.src;
+          lightboxModal.classList.remove('hidden');
+        }
+      });
+
+      closeLightboxBtn.addEventListener('click', () => {
+        lightboxModal.classList.add('hidden');
+      });
+      lightboxModal.addEventListener('click', (e) => {
+        if (e.target === lightboxModal) lightboxModal.classList.add('hidden');
+      });
+
+      // Settings Modal
+      function openSettings() {
+        myNameInput.value = state.myName;
+        partnerNameInput.value = state.partnerName;
+        partnerStatusInput.value = state.partnerStatus;
+        anniversaryInput.value = state.anniversaryDate;
+        document.getElementById('lockPinInput').value = state.lockPin || '';
+        settingsModal.classList.remove('hidden');
+      }
+
+      settingsBtn.addEventListener('click', openSettings);
+      daysTogetherBtn.addEventListener('click', openSettings);
+      closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+      saveSettingsBtn.addEventListener('click', () => {
+        state.myName = myNameInput.value.trim() || 'Русечка';
+        state.partnerName = partnerNameInput.value.trim() || 'Линочка';
+        state.partnerStatus = partnerStatusInput.value.trim() || 'В сети 💕';
+        state.anniversaryDate = anniversaryInput.value || defaultState.anniversaryDate;
+        state.lockPin = document.getElementById('lockPinInput').value.trim();
+        saveState();
+        renderHeader();
+        renderMessages();
+        settingsModal.classList.add('hidden');
+        showToast('Настройки сохранены');
+      });
+
+      openResetConfirmBtn.addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        resetModal.classList.remove('hidden');
+      });
+      cancelResetBtn.addEventListener('click', () => resetModal.classList.add('hidden'));
+      confirmResetBtn.addEventListener('click', () => {
+        state = JSON.parse(JSON.stringify(defaultState));
+        saveState();
+        resetModal.classList.add('hidden');
+        applyTheme();
+        applySoundIcon();
+        renderHeader();
+        renderTabs();
+        renderMessages();
+        renderPlans();
+        renderGallery();
+        showToast('Переписка сброшена');
+      });
+
+      const syncBtn = document.getElementById('syncBtn');
+      const syncDot = document.getElementById('syncDot');
+      const syncBtnLabel = document.getElementById('syncBtnLabel');
+      const syncModal = document.getElementById('syncModal');
+      const closeSyncBtn = document.getElementById('closeSyncBtn');
+      const firebaseUrlInput = document.getElementById('firebaseUrlInput');
+      const roomCodeInput = document.getElementById('roomCodeInput');
+      const syncStatusBox = document.getElementById('syncStatusBox');
+      const connectSyncBtn = document.getElementById('connectSyncBtn');
+      const disconnectSyncBtn = document.getElementById('disconnectSyncBtn');
+
+      let syncTimer = null;
+      let isSyncConnected = false;
+
+      function getFirebaseEndpoint() {
+        const base = (state.firebaseUrl || '').trim().replace(/\/+$/, '');
+        const room = (state.roomCode || 'love').trim().replace(/[^a-zA-Z0-9_-]/g, '') || 'love';
+        const normBase = base.replace(/^https:\/\//i, 'https://');
+        if (!normBase.startsWith('https://')) return null;
+        return `${normBase}/rooms/${room}.json`;
+      }
+
+      function updateSyncUI(connected, statusText) {
+        isSyncConnected = connected;
+        if (connected) {
+          syncDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+          syncBtnLabel.textContent = 'Онлайн';
+          syncStatusBox.textContent = statusText || 'Статус: Подключено к Firebase';
+        } else {
+          syncDot.className = 'w-2 h-2 rounded-full bg-gray-400';
+          syncBtnLabel.textContent = 'Офлайн';
+          syncStatusBox.textContent = statusText || 'Статус: Локальный режим (без сервера)';
+        }
+      }
+
+      async function deriveAesKey(passphrase, saltStr) {
+        const enc = new TextEncoder();
+        const keyMaterial = await window.crypto.subtle.importKey(
+          'raw',
+          enc.encode(passphrase),
+          'PBKDF2',
+          false,
+          ['deriveKey']
+        );
+        return window.crypto.subtle.deriveKey(
+          {
+            name: 'PBKDF2',
+            salt: enc.encode('couple-messenger-' + saltStr),
+            iterations: 100000,
+            hash: 'SHA-256'
+          },
+          keyMaterial,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      }
+
+      async function encryptPayload(obj, passphrase, room) {
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveAesKey(passphrase, room);
+        const encoded = new TextEncoder().encode(JSON.stringify(obj));
+        const cipher = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+        const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+        return { encrypted: true, iv: toB64(iv), ct: toB64(cipher), updatedAt: Date.now() };
+      }
+
+      async function decryptPayload(data, passphrase, room) {
+        const fromB64 = (str) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+        const key = await deriveAesKey(passphrase, room);
+        const plain = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: fromB64(data.iv) },
+          key,
+          fromB64(data.ct)
+        );
+        return JSON.parse(new TextDecoder().decode(plain));
+      }
+
+      async function pushToFirebase() {
+        const url = getFirebaseEndpoint();
+        if (!url) return;
+        try {
+          const rawPayload = {
+            messages: state.messages,
+            plans: state.plans,
+            updatedAt: Date.now()
+          };
+          let bodyObj = rawPayload;
+          if ((state.e2eeKey || '').trim() && window.crypto && window.crypto.subtle) {
+            bodyObj = await encryptPayload(rawPayload, state.e2eeKey.trim(), state.roomCode || 'love');
+          }
+          const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyObj)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          updateSyncUI(true, state.e2eeKey ? 'Статус: Зашифровано (AES-256) и отправлено' : 'Статус: Синхронизировано');
+        } catch (err) {
+          updateSyncUI(false, 'Ошибка отправки: проверьте URL и правила Firebase');
+        }
+      }
+
+      async function pullFromFirebase() {
+        const url = getFirebaseEndpoint();
+        if (!url) return;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          let data = await res.json();
+          if (data && data.encrypted && data.iv && data.ct) {
+            if (!(state.e2eeKey || '').trim()) {
+              updateSyncUI(false, 'Данные зашифрованы: введите секретный ключ E2EE');
+              return;
+            }
+            try {
+              data = await decryptPayload(data, state.e2eeKey.trim(), state.roomCode || 'love');
+            } catch (decErr) {
+              updateSyncUI(false, 'Неверный ключ E2EE — не удалось расшифровать чат');
+              return;
+            }
+          }
+          if (data && Array.isArray(data.messages)) {
+            const changed = JSON.stringify(data.messages) !== JSON.stringify(state.messages) ||
+                            JSON.stringify(data.plans || []) !== JSON.stringify(state.plans);
+            if (changed) {
+              const hadMore = data.messages.length > state.messages.length;
+              state.messages = data.messages;
+              if (Array.isArray(data.plans)) state.plans = data.plans;
+              saveState(true);
+              renderMessages();
+              renderPlans();
+              renderGallery();
+              renderTabs();
+              if (hadMore) {
+                playPopSound();
+                const lastMsg = data.messages[data.messages.length - 1];
+                if (lastMsg && lastMsg.sender !== state.activeRole) {
+                  const senderName = lastMsg.sender === 'me' ? state.myName : state.partnerName;
+                  triggerBrowserNotification(senderName || 'Новое сообщение', lastMsg.text || '📷 Фотография');
+                }
+              }
+            }
+          } else if (data === null) {
+            await pushToFirebase();
+          }
+          updateSyncUI(true, state.e2eeKey ? 'Статус: Подключено 🔐 (E2EE AES-256)' : 'Статус: Подключено (без E2EE)');
+        } catch (err) {
+          updateSyncUI(false, 'Ошибка подключения: проверьте HTTPS URL и CORS/правила');
+        }
+      }
+
+      function startSyncLoop() {
+        clearInterval(syncTimer);
+        if (!getFirebaseEndpoint()) {
+          updateSyncUI(false);
+          return;
+        }
+        pullFromFirebase();
+        syncTimer = setInterval(pullFromFirebase, 2000);
+      }
+
+      const origSaveState = saveState;
+      saveState = function (skipRemote) {
+        origSaveState();
+        if (!skipRemote && getFirebaseEndpoint()) {
+          pushToFirebase();
+        }
+      };
+
+      syncBtn.addEventListener('click', () => {
+        firebaseUrlInput.value = state.firebaseUrl || '';
+        roomCodeInput.value = state.roomCode || 'love';
+        document.getElementById('e2eeKeyInput').value = state.e2eeKey || '';
+        syncModal.classList.remove('hidden');
+      });
+      closeSyncBtn.addEventListener('click', () => syncModal.classList.add('hidden'));
+      syncModal.addEventListener('click', (e) => {
+        if (e.target === syncModal) syncModal.classList.add('hidden');
+      });
+
+      connectSyncBtn.addEventListener('click', () => {
+        const url = firebaseUrlInput.value.trim().replace(/^https:\/\//i, 'https://');
+        if (!url.startsWith('https://')) {
+          showToast('Введите корректный https:// URL Firebase');
+          return;
+        }
+        state.firebaseUrl = url;
+        state.roomCode = roomCodeInput.value.trim() || 'love';
+        state.e2eeKey = document.getElementById('e2eeKeyInput').value;
+        origSaveState();
+        syncModal.classList.add('hidden');
+        const lockBtn = document.getElementById('lockBtn');
+      const lockScreen = document.getElementById('lockScreen');
+      const unlockForm = document.getElementById('unlockForm');
+      const unlockPinInput = document.getElementById('unlockPinInput');
+      const unlockError = document.getElementById('unlockError');
+
+      function applyLockState() {
+        if (state.isLocked && state.lockPin) {
+          lockScreen.classList.remove('hidden');
+          unlockPinInput.value = '';
+          unlockError.classList.add('hidden');
+        } else {
+          lockScreen.classList.add('hidden');
+        }
+      }
+
+      lockBtn.addEventListener('click', () => {
+        if (!state.lockPin) {
+          openSettings();
+          showToast('Задайте PIN-код в настройках для блокировки');
+          return;
+        }
+        state.isLocked = true;
+        origSaveState();
+        const notifBtn = document.getElementById('notifBtn');
+      const notifDot = document.getElementById('notifDot');
+      const notifModal = document.getElementById('notifModal');
+      const closeNotifBtn = document.getElementById('closeNotifBtn');
+      const notifStatusBox = document.getElementById('notifStatusBox');
+      const enableNotifBtn = document.getElementById('enableNotifBtn');
+      const testNotifBtn = document.getElementById('testNotifBtn');
+
+      function updateNotifStatus() {
+        if (!('Notification' in window)) {
+          notifStatusBox.textContent = 'Браузер не поддерживает уведомления (на iOS откройте сайт с экрана «Домой»).';
+          notifDot.classList.add('hidden');
+          return;
+        }
+        const perm = Notification.permission;
+        if (perm === 'granted') {
+          notifStatusBox.textContent = 'Статус: Уведомления включены ✅';
+          notifDot.classList.remove('hidden');
+        } else if (perm === 'denied') {
+          notifStatusBox.textContent = 'Статус: Уведомления запрещены в настройках браузера ❌';
+          notifDot.classList.add('hidden');
+        } else {
+          notifStatusBox.textContent = 'Статус: Разрешение ещё не выдано';
+          notifDot.classList.add('hidden');
+        }
+      }
+
+      function triggerBrowserNotification(title, body) {
+        try {
+          if (!('Notification' in window) || Notification.permission !== 'granted') return;
+          const safeBody = (state.isLocked && state.lockPin) ? 'Новое приватное сообщение 🔒' : body;
+          new Notification(title, {
+            body: safeBody,
+            tag: 'couple-chat-msg'
+          });
+        } catch (e) {}
+      }
+
+      notifBtn.addEventListener('click', () => {
+        if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      }
+      updateNotifStatus();
+        notifModal.classList.remove('hidden');
+      });
+      closeNotifBtn.addEventListener('click', () => notifModal.classList.add('hidden'));
+      notifModal.addEventListener('click', (e) => {
+        if (e.target === notifModal) notifModal.classList.add('hidden');
+      });
+
+      enableNotifBtn.addEventListener('click', async () => {
+        if (!('Notification' in window)) {
+          showToast('На iPhone сначала добавьте сайт на экран «Домой»');
+          return;
+        }
+        try {
+          const res = await Notification.requestPermission();
+          updateNotifStatus();
+          if (res === 'granted') {
+            showToast('Уведомления включены!');
+            triggerBrowserNotification('Наш Мессенджер 💕', 'Уведомления успешно подключены!');
+          } else {
+            showToast('Разрешение не получено');
+          }
+        } catch (e) {
+          showToast('Не удалось запросить разрешение');
+        }
+      });
+
+      testNotifBtn.addEventListener('click', () => {
+        if (!('Notification' in window) || Notification.permission !== 'granted') {
+          showToast('Сначала нажмите «Включить уведомления»');
+          return;
+        }
+        triggerBrowserNotification(state.partnerName || 'Любимая', 'Скучаю по тебе 💕 (тестовое уведомление)');
+      });
+
+      updateNotifStatus();
+      applyLockState();
+      });
+
+      unlockForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (unlockPinInput.value.trim() === state.lockPin) {
+          state.isLocked = false;
+          origSaveState();
+          applyLockState();
+        } else {
+          unlockError.classList.remove('hidden');
+          unlockPinInput.value = '';
+          unlockPinInput.focus();
+        }
+      });
+
+      applyLockState();
+      startSyncLoop();
+        showToast('Подключаемся к Firebase...');
+      });
+
+      disconnectSyncBtn.addEventListener('click', () => {
+        clearInterval(syncTimer);
+        state.firebaseUrl = '';
+        origSaveState();
+        updateSyncUI(false);
+        syncModal.classList.add('hidden');
+        showToast('Переключено в локальный режим');
+      });
+
+      const installAppBtn = document.getElementById('installAppBtn');
+      const installModal = document.getElementById('installModal');
+      const closeInstallBtn = document.getElementById('closeInstallBtn');
+      const okInstallBtn = document.getElementById('okInstallBtn');
+      const nativeInstallBtn = document.getElementById('nativeInstallBtn');
+      let deferredInstallPrompt = null;
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        nativeInstallBtn.classList.remove('hidden');
+      });
+
+      installAppBtn.addEventListener('click', () => {
+        installModal.classList.remove('hidden');
+      });
+      closeInstallBtn.addEventListener('click', () => installModal.classList.add('hidden'));
+      okInstallBtn.addEventListener('click', () => installModal.classList.add('hidden'));
+      installModal.addEventListener('click', (e) => {
+        if (e.target === installModal) installModal.classList.add('hidden');
+      });
+
+      nativeInstallBtn.addEventListener('click', async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        nativeInstallBtn.classList.add('hidden');
+        installModal.classList.add('hidden');
+      });
+
+      // Initial render
+      startSyncLoop();
+      applyTheme();
+      applySoundIcon();
+      initEmojiDrawer();
+      renderHeader();
+      renderTabs();
+      renderMessages();
+      renderPlans();
+      renderGallery();
+    })();
+  </script>
+</body>
+</html>
