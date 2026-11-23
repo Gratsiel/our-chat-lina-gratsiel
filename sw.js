@@ -18,6 +18,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Наш Мессенджер', {
       body: data.body || 'Новое сообщение',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
       tag: 'couple-chat-msg',
       renotify: true
     })
