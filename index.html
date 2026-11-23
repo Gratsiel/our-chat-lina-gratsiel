@@ -49,6 +49,12 @@
     }
     html, body {
       touch-action: manipulation;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
     }
     .surface {
       background-color: var(--bg-surface);
@@ -122,10 +128,10 @@
     }
   </style>
 </head>
-<body class="w-screen overflow-hidden flex flex-col items-center justify-center sm:p-4" style="height: 100dvh; max-height: 100dvh;">
+<body class="w-full h-full overflow-hidden flex flex-col items-center justify-center sm:p-4">
 
   <!-- Main App Shell -->
-  <div class="surface w-full h-full sm:max-w-4xl sm:h-[92vh] sm:rounded-3xl sm:border sm:shadow-2xl flex flex-col overflow-hidden relative">
+  <div id="appShell" class="surface w-full h-full sm:max-w-4xl sm:h-[92vh] sm:rounded-3xl sm:border sm:shadow-2xl flex flex-col overflow-hidden relative">
 
     <!-- Top Header -->
     <header class="surface border-b border-soft px-3 sm:px-5 pb-2.5 flex items-center justify-between gap-1.5 shrink-0 z-20" style="padding-top: max(0.625rem, env(safe-area-inset-top));">
@@ -1923,14 +1929,21 @@
         rolePickerModal.classList.remove('hidden');
       }
 
+      const appShell = document.getElementById('appShell');
       if (window.visualViewport) {
         const syncViewportHeight = () => {
-          document.body.style.height = window.visualViewport.height + 'px';
+          if (window.innerWidth < 640 && appShell) {
+            appShell.style.height = window.visualViewport.height + 'px';
+          } else if (appShell) {
+            appShell.style.height = '';
+          }
+          window.scrollTo(0, 0);
           if (currentTab === 'chat' && !searchQuery) {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
           }
         };
         window.visualViewport.addEventListener('resize', syncViewportHeight);
+        window.visualViewport.addEventListener('scroll', () => window.scrollTo(0, 0));
       }
 
       // Initial render

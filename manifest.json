@@ -1,10 +1,12 @@
 {
+  "id": "./",
   "name": "Наш Мессенджер — Чат для двоих",
   "short_name": "Наш Чат",
   "description": "Приватный мессенджер для пары с шифрованием E2EE",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#fdf8f9",
   "theme_color": "#e11d48",
   "orientation": "portrait",
@@ -13,13 +15,19 @@
       "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
