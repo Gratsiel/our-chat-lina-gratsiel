@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.5</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.6</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -1673,7 +1673,10 @@
           showToast('Сначала введите токен бота и ID получателя');
           return;
         }
+        notifStatusBox.textContent = '⏳ Отправка теста в Telegram...';
+        testNotifBtn.disabled = true;
         await sendTelegramPush(state.activeRole === 'me' ? state.myName : state.partnerName, 'Тестовое уведомление 💕', true);
+        testNotifBtn.disabled = false;
       });
 
       // LOCK SCREEN
@@ -1773,13 +1776,20 @@
           const data = await res.json().catch(() => ({}));
           if (!res.ok || !data.ok) {
             const desc = data.description || ('HTTP ' + res.status);
+            if (isTest && notifStatusBox) notifStatusBox.textContent = '❌ Ошибка Telegram: ' + desc;
             showToast('Ошибка Telegram: ' + desc);
             return false;
           }
-          if (isTest) showToast('✅ Тест доставлен в Telegram!');
+          if (isTest) {
+            if (notifStatusBox) notifStatusBox.textContent = '✅ Тест доставлен в Telegram!';
+            showToast('✅ Тест доставлен в Telegram!');
+          }
           return true;
         } catch (e) {
-          if (isTest) showToast('❌ Нет связи с Telegram API (проверьте сеть/VPN)');
+          if (isTest) {
+            if (notifStatusBox) notifStatusBox.textContent = '❌ Нет связи с api.telegram.org (проверьте сеть/VPN)';
+            showToast('❌ Нет связи с Telegram API');
+          }
           return false;
         }
       }
