@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Наш Мессенджер — Чат для двоих</title>
   <link rel="manifest" href="./manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -42,6 +42,12 @@
       color: var(--text-primary);
       margin: 0;
       transition: background-color 0.25s ease, color 0.25s ease;
+    }
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+    html, body {
+      touch-action: manipulation;
     }
     .surface {
       background-color: var(--bg-surface);
@@ -143,17 +149,6 @@
           <span>❤️</span>
           <span id="daysCountLabel">124 дня</span>
         </button>
-
-        <!-- Role Switcher (Who am I typing as) -->
-        <div class="flex items-center subtle-bg rounded-full p-0.5 border border-soft" title="Переключить отправителя для теста">
-          <button id="roleMeBtn" type="button" class="px-2.5 py-1 rounded-full text-xs font-medium transition cursor-pointer">
-            Русечка
-          </button>
-          <button id="rolePartnerBtn" type="button" class="px-2.5 py-1 rounded-full text-xs font-medium transition cursor-pointer">
-            Линочка
-          </button>
-        </div>
-
         <!-- Privacy Lock Button -->
         <button id="lockBtn" type="button" class="p-1.5 sm:p-2 rounded-full hover:bg-rose-500/10 text-muted hover:text-rose-500 transition cursor-pointer" title="Заблокировать чат (PIN)" aria-label="Заблокировать">
           <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -371,6 +366,13 @@
 
         <div class="space-y-3 text-sm">
           <div>
+            <label class="block text-xs text-muted mb-1">Кто пользуется этим телефоном?</label>
+            <select id="myRoleSelect" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400">
+              <option value="me">Русечка</option>
+              <option value="partner">Линочка</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs text-muted mb-1">Ваше имя</label>
             <input id="myNameInput" type="text" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
           </div>
@@ -539,13 +541,30 @@
       </div>
     </div>
 
+    <!-- FIRST-TIME ROLE PICKER MODAL -->
+    <div id="rolePickerModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="surface border border-soft rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4 text-center">
+        <div class="text-3xl">💕</div>
+        <h3 class="font-bold text-lg">Привет! Кто открыл чат?</h3>
+        <p class="text-xs text-muted">Выберите один раз — телефон запомнит вас, и переключаться больше не придётся.</p>
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <button id="pickRoleMeBtn" type="button" class="py-3 px-4 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm cursor-pointer transition shadow-sm">
+            Я Русечка
+          </button>
+          <button id="pickRolePartnerBtn" type="button" class="py-3 px-4 rounded-2xl subtle-bg hover:bg-rose-500 hover:text-white font-semibold text-sm cursor-pointer transition border border-soft">
+            Я Линочка
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- TOAST -->
     <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-xs px-4 py-2 rounded-full shadow-lg"></div>
   </div>
 
   <script>
     (function () {
-      const STORAGE_KEY = 'couple_messenger_state_v3';
+      const STORAGE_KEY = 'couple_messenger_state_v4';
 
       const QUICK_PHRASES = [
         'Люблю тебя ❤️',
@@ -560,6 +579,7 @@
 
       const defaultState = {
         activeRole: 'me', // 'me' or 'partner'
+        roleSelected: false,
         darkMode: false,
         soundEnabled: true,
         myName: 'Русечка',
@@ -638,8 +658,6 @@
       const headerStatus = document.getElementById('headerStatus');
       const daysTogetherBtn = document.getElementById('daysTogetherBtn');
       const daysCountLabel = document.getElementById('daysCountLabel');
-      const roleMeBtn = document.getElementById('roleMeBtn');
-      const rolePartnerBtn = document.getElementById('rolePartnerBtn');
 
       const tabChat = document.getElementById('tabChat');
       const tabPlans = document.getElementById('tabPlans');
@@ -795,14 +813,6 @@
         headerAvatar.textContent = (displayName || 'Л').trim().charAt(0).toUpperCase();
         headerStatus.textContent = isPartnerView ? 'В сети · Пишешь как Линочка' : state.partnerStatus;
         daysCountLabel.textContent = pluralDays(calcDaysTogether());
-
-        if (state.activeRole === 'me') {
-          roleMeBtn.className = 'px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500 text-white transition cursor-pointer';
-          rolePartnerBtn.className = 'px-2.5 py-1 rounded-full text-xs font-medium text-muted hover:text-rose-500 transition cursor-pointer';
-        } else {
-          rolePartnerBtn.className = 'px-2.5 py-1 rounded-full text-xs font-medium bg-rose-500 text-white transition cursor-pointer';
-          roleMeBtn.className = 'px-2.5 py-1 rounded-full text-xs font-medium text-muted hover:text-rose-500 transition cursor-pointer';
-        }
       }
 
       function renderTabs() {
@@ -1012,21 +1022,6 @@
       }
 
       // Event Listeners
-      roleMeBtn.addEventListener('click', () => {
-        state.activeRole = 'me';
-        activeReactionMsgId = null;
-        saveState();
-        renderHeader();
-        renderMessages();
-      });
-
-      rolePartnerBtn.addEventListener('click', () => {
-        state.activeRole = 'partner';
-        activeReactionMsgId = null;
-        saveState();
-        renderHeader();
-        renderMessages();
-      });
 
       tabChat.addEventListener('click', () => {
         currentTab = 'chat';
@@ -1245,6 +1240,7 @@
 
       // Settings Modal
       function openSettings() {
+        document.getElementById('myRoleSelect').value = state.activeRole || 'me';
         myNameInput.value = state.myName;
         partnerNameInput.value = state.partnerName;
         partnerStatusInput.value = state.partnerStatus;
@@ -1258,6 +1254,8 @@
       closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
       saveSettingsBtn.addEventListener('click', () => {
+        state.activeRole = document.getElementById('myRoleSelect').value;
+        state.roleSelected = true;
         state.myName = myNameInput.value.trim() || 'Русечка';
         state.partnerName = partnerNameInput.value.trim() || 'Линочка';
         state.partnerStatus = partnerStatusInput.value.trim() || 'В сети 💕';
@@ -1643,6 +1641,26 @@
         nativeInstallBtn.classList.add('hidden');
         installModal.classList.add('hidden');
       });
+
+      const rolePickerModal = document.getElementById('rolePickerModal');
+      const pickRoleMeBtn = document.getElementById('pickRoleMeBtn');
+      const pickRolePartnerBtn = document.getElementById('pickRolePartnerBtn');
+
+      function chooseRole(role) {
+        state.activeRole = role;
+        state.roleSelected = true;
+        origSaveState();
+        rolePickerModal.classList.add('hidden');
+        renderHeader();
+        renderMessages();
+      }
+
+      pickRoleMeBtn.addEventListener('click', () => chooseRole('me'));
+      pickRolePartnerBtn.addEventListener('click', () => chooseRole('partner'));
+
+      if (!state.roleSelected) {
+        rolePickerModal.classList.remove('hidden');
+      }
 
       // Initial render
       startSyncLoop();
