@@ -340,7 +340,7 @@
         </button>
 
         <!-- Textarea -->
-        <textarea id="messageInput" rows="1" placeholder="Напиши что-нибудь тёплое..." class="flex-1 subtle-bg rounded-2xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-rose-400 resize-none max-h-28 leading-snug"></textarea>
+        <textarea id="messageInput" rows="1" placeholder="Сообщение..." class="flex-1 subtle-bg rounded-2xl px-4 py-2 text-base outline-none focus:ring-2 focus:ring-rose-400 resize-none min-h-[42px] max-h-28 leading-normal"></textarea>
 
         <!-- Quick Heart Button -->
         <button id="sendHeartBtn" type="button" class="p-2.5 rounded-full subtle-bg text-rose-500 hover:bg-rose-500 hover:text-white cursor-pointer transition shrink-0" title="Отправить сердечко" aria-label="Сердечко">
@@ -424,7 +424,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.7</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.9</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -1012,12 +1012,12 @@
 
           html += `
             <div class="flex ${alignClass} msg-enter group">
-              <div class="max-w-[82%] sm:max-w-[70%] flex flex-col ${isMineFromActiveRole ? 'items-end' : 'items-start'}">
-                <div class="flex items-end gap-1.5 ${isMineFromActiveRole ? 'flex-row-reverse' : 'flex-row'}">
-                  <div class="${bubbleClass} px-3.5 py-2 shadow-xs relative cursor-pointer" data-action="toggle-actions" data-id="${msg.id}" title="Нажми для реакции или ответа">
+              <div class="max-w-[82%] sm:max-w-[70%] min-w-0 flex flex-col ${isMineFromActiveRole ? 'items-end' : 'items-start'}">
+                <div class="flex items-end gap-1.5 max-w-full min-w-0 ${isMineFromActiveRole ? 'flex-row-reverse' : 'flex-row'}">
+                  <div class="${bubbleClass} px-3.5 py-2 shadow-xs relative cursor-pointer max-w-full min-w-0" data-action="toggle-actions" data-id="${msg.id}" title="Нажми для реакции или ответа">
                     ${replyBlock}
                     ${imageBlock}
-                    ${msg.text ? `<p class="text-sm whitespace-pre-wrap break-words leading-relaxed">${escapeHtml(msg.text)}</p>` : ''}
+                    ${msg.text ? `<p class="text-sm whitespace-pre-wrap leading-relaxed" style="overflow-wrap: anywhere; word-break: break-word;">${escapeHtml(msg.text)}</p>` : ''}
                     <div class="flex items-center justify-end gap-1 mt-1 text-[10px] ${isMineFromActiveRole ? 'text-white/80' : 'text-muted'}">
                       <span>${msg.time}</span>
                       ${isMineFromActiveRole ? '<span>✓✓</span>' : ''}
@@ -2012,10 +2012,11 @@
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal) {
         try {
+          const basePath = new URL('./', window.location.href).pathname;
           await OneSignal.init({
             appId: ONESIGNAL_APP_ID,
-            serviceWorkerPath: './OneSignalSDKWorker.js',
-            serviceWorkerParam: { scope: './' },
+            serviceWorkerPath: basePath + 'OneSignalSDKWorker.js',
+            serviceWorkerParam: { scope: basePath },
             notifyButton: { enable: false }
           });
           oneSignalReady = true;
