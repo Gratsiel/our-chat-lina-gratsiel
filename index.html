@@ -11,6 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Наш Чат" />
   <meta name="theme-color" content="#e11d48" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
     :root {
       --bg-app: #fdf8f9;
@@ -411,7 +412,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.2</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.4</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -443,6 +444,10 @@
             <label class="block text-xs text-muted mb-1">PIN-код для блокировки экрана (оставьте пустым, чтобы отключить)</label>
             <input id="lockPinInput" type="password" inputmode="numeric" placeholder="Например: 1402" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
           </div>
+          <label class="flex items-center gap-2.5 pt-1 cursor-pointer text-xs text-muted">
+            <input id="hideNotifTextInput" type="checkbox" class="w-4 h-4 accent-rose-500 rounded cursor-pointer" />
+            <span>Скрывать текст сообщений в push-уведомлениях</span>
+          </label>
         </div>
 
         <div class="flex items-center justify-between pt-2 border-t border-soft">
@@ -535,6 +540,11 @@
 
         <div id="notifStatusBox" class="text-xs px-3 py-2 rounded-xl subtle-bg text-muted">
           Статус: Проверка...
+        </div>
+
+        <div>
+          <label class="block text-xs text-muted mb-1">🔑 OneSignal API Key (вводится 1 раз, не хранится на GitHub)</label>
+          <input id="oneSignalKeyInput" type="password" placeholder="Вставьте API Key OneSignal..." class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
         </div>
 
         <div class="space-y-2 text-xs text-muted leading-relaxed">
@@ -650,6 +660,8 @@
         roomCode: 'love',
         e2eeKey: '',
         lockPin: '',
+        hideNotifText: false,
+        oneSignalApiKey: '',
         isLocked: false,
         resetVotes: { me: false, partner: false },
         messages: [
@@ -1073,6 +1085,8 @@
         renderMessages();
         renderGallery();
         playPopSound();
+        const senderTitle = state.activeRole === 'me' ? state.myName : state.partnerName;
+        sendOneSignalPush(senderTitle || 'Новое сообщение', clean || '📷 Фотография');
       }
 
       function initEmojiDrawer() {
@@ -1315,6 +1329,7 @@
         partnerStatusInput.value = state.partnerStatus;
         anniversaryInput.value = state.anniversaryDate;
         document.getElementById('lockPinInput').value = state.lockPin || '';
+        document.getElementById('hideNotifTextInput').checked = !!state.hideNotifText;
         settingsModal.classList.remove('hidden');
       }
 
@@ -1330,6 +1345,7 @@
         state.partnerStatus = partnerStatusInput.value.trim() || 'В сети 💕';
         state.anniversaryDate = anniversaryInput.value || defaultState.anniversaryDate;
         state.lockPin = document.getElementById('lockPinInput').value.trim();
+        state.hideNotifText = document.getElementById('hideNotifTextInput').checked;
         saveState();
         renderHeader();
         renderMessages();
@@ -1821,12 +1837,21 @@
       });
 
       enableNotifBtn.addEventListener('click', async () => {
+        const enteredKey = document.getElementById('oneSignalKeyInput').value.trim();
+        if (enteredKey) { state.oneSignalApiKey = enteredKey; origSaveState(); }
         if (!('Notification' in window)) {
           showToast('На iPhone сначала добавьте сайт на экран «Домой»');
           return;
         }
         try {
           const res = await Notification.requestPermission();
+          window.OneSignalDeferred.push(async function(OneSignal) {
+            try {
+              await OneSignal.Notifications.requestPermission();
+              await OneSignal.User.PushSubscription.optIn();
+              if (state.activeRole) await OneSignal.login('couple_' + state.activeRole);
+            } catch (e) {}
+          });
           updateNotifStatus();
           if (res === 'granted') {
             showToast('Уведомления включены!');
@@ -1913,11 +1938,66 @@
       const pickRoleMeBtn = document.getElementById('pickRoleMeBtn');
       const pickRolePartnerBtn = document.getElementById('pickRolePartnerBtn');
 
+      const ONESIGNAL_APP_ID = '3bee90c9-3610-44a6-8ac9-16530c7e5f06';
+      // OneSignal API Key is stored only locally on user devices (state.oneSignalApiKey)
+      let oneSignalReady = false;
+
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        try {
+          await OneSignal.init({
+            appId: ONESIGNAL_APP_ID,
+            serviceWorkerPath: './OneSignalSDKWorker.js',
+            serviceWorkerParam: { scope: './' },
+            notifyButton: { enable: false }
+          });
+          oneSignalReady = true;
+          if (state.roleSelected && state.activeRole) {
+            await OneSignal.login('couple_' + state.activeRole);
+          }
+        } catch (e) {}
+      });
+
+      async function syncOneSignalUser(role) {
+        try {
+          window.OneSignalDeferred.push(async function(OneSignal) {
+            try {
+              await OneSignal.login('couple_' + role);
+            } catch (e) {}
+          });
+        } catch (e) {}
+      }
+
+      async function sendOneSignalPush(senderName, textBody) {
+        try {
+          const apiKey = (state.oneSignalApiKey || '').trim();
+          if (!apiKey) return;
+          const targetRole = state.activeRole === 'me' ? 'partner' : 'me';
+          const bodyText = state.hideNotifText ? 'Новое приватное сообщение 🔒' : textBody;
+          await fetch('https://api.onesignal.com/notifications', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Key ' + apiKey
+            },
+            body: JSON.stringify({
+              app_id: ONESIGNAL_APP_ID,
+              include_aliases: { external_id: ['couple_' + targetRole] },
+              target_channel: 'push',
+              headings: { en: senderName, ru: senderName },
+              contents: { en: bodyText, ru: bodyText },
+              url: window.location.href
+            })
+          });
+        } catch (e) {}
+      }
+
       function chooseRole(role) {
         state.activeRole = role;
         state.roleSelected = true;
         origSaveState();
         rolePickerModal.classList.add('hidden');
+        syncOneSignalUser(role);
         renderHeader();
         renderMessages();
       }
