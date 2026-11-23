@@ -128,7 +128,7 @@
     }
   </style>
 </head>
-<body class="w-full h-full overflow-hidden flex flex-col items-center justify-center sm:p-4">
+<body class="w-full h-full overflow-hidden flex flex-col items-stretch justify-start sm:items-center sm:justify-center sm:p-4">
 
   <!-- Main App Shell -->
   <div id="appShell" class="surface w-full h-full sm:max-w-4xl sm:h-[92vh] sm:rounded-3xl sm:border sm:shadow-2xl flex flex-col overflow-hidden relative">
@@ -1934,8 +1934,10 @@
         const syncViewportHeight = () => {
           if (window.innerWidth < 640 && appShell) {
             appShell.style.height = window.visualViewport.height + 'px';
+            appShell.style.transform = `translateY(${window.visualViewport.offsetTop}px)`;
           } else if (appShell) {
             appShell.style.height = '';
+            appShell.style.transform = '';
           }
           window.scrollTo(0, 0);
           if (currentTab === 'chat' && !searchQuery) {
@@ -1943,7 +1945,7 @@
           }
         };
         window.visualViewport.addEventListener('resize', syncViewportHeight);
-        window.visualViewport.addEventListener('scroll', () => window.scrollTo(0, 0));
+        window.visualViewport.addEventListener('scroll', syncViewportHeight);
       }
 
       // Initial render
