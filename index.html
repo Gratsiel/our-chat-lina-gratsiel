@@ -57,6 +57,18 @@
       overflow: hidden;
       overscroll-behavior: none;
     }
+    .wallpaper-hearts {
+      background-image: radial-gradient(rgba(225, 29, 72, 0.08) 1.5px, transparent 1.5px);
+      background-size: 22px 22px;
+    }
+    .wallpaper-sunset {
+      background: linear-gradient(160deg, rgba(244, 63, 94, 0.09) 0%, rgba(251, 146, 60, 0.08) 50%, rgba(168, 85, 247, 0.08) 100%);
+    }
+    .wallpaper-stars {
+      background-image: radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px), radial-gradient(rgba(244, 63, 94, 0.14) 1px, transparent 1px);
+      background-size: 28px 28px;
+      background-position: 0 0, 14px 14px;
+    }
     .surface {
       background-color: var(--bg-surface);
       border-color: var(--border-soft);
@@ -412,29 +424,41 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.4</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v2.6</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
         <div class="space-y-3 text-sm">
           <div>
-            <label class="block text-xs text-muted mb-1">Кто пользуется этим телефоном?</label>
-            <select id="myRoleSelect" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400">
-              <option value="me">Русечка</option>
-              <option value="partner">Линочка</option>
+            <label class="block text-xs text-muted mb-1.5">🎨 Цвет настроения (тема чата)</label>
+            <div id="accentPicker" class="flex items-center gap-2.5">
+              <button type="button" data-accent="rose" class="w-8 h-8 rounded-full bg-rose-500 ring-offset-2 cursor-pointer transition" title="Роза"></button>
+              <button type="button" data-accent="purple" class="w-8 h-8 rounded-full bg-purple-600 ring-offset-2 cursor-pointer transition" title="Лаванда"></button>
+              <button type="button" data-accent="blue" class="w-8 h-8 rounded-full bg-blue-600 ring-offset-2 cursor-pointer transition" title="Небо"></button>
+              <button type="button" data-accent="orange" class="w-8 h-8 rounded-full bg-orange-500 ring-offset-2 cursor-pointer transition" title="Персик"></button>
+              <button type="button" data-accent="slate" class="w-8 h-8 rounded-full bg-slate-600 ring-offset-2 cursor-pointer transition" title="Графит"></button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-muted mb-1">🖼️ Фон переписки</label>
+            <select id="wallpaperSelect" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400">
+              <option value="clean">Классика (чистый фон)</option>
+              <option value="hearts">Нежный узор</option>
+              <option value="sunset">Градиент заката</option>
+              <option value="stars">Звёздная ночь</option>
             </select>
           </div>
+
           <div>
-            <label class="block text-xs text-muted mb-1">Ваше имя</label>
-            <input id="myNameInput" type="text" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
-          </div>
-          <div>
-            <label class="block text-xs text-muted mb-1">Имя девушки</label>
-            <input id="partnerNameInput" type="text" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
-          </div>
-          <div>
-            <label class="block text-xs text-muted mb-1">Её статус в шапке</label>
-            <input id="partnerStatusInput" type="text" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400" />
+            <label class="block text-xs text-muted mb-1">💬 Быстрая реакция вместо ❤️</label>
+            <select id="quickEmojiSelect" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400">
+              <option value="❤️">❤️ Сердечко</option>
+              <option value="😘">😘 Поцелуй</option>
+              <option value="🫂">🫂 Обнимашки</option>
+              <option value="🔥">🔥 Огонёк</option>
+              <option value="🍓">🍓 Клубничка</option>
+            </select>
           </div>
           <div>
             <label class="block text-xs text-muted mb-1">Дата начала отношений</label>
@@ -448,6 +472,9 @@
             <input id="hideNotifTextInput" type="checkbox" class="w-4 h-4 accent-rose-500 rounded cursor-pointer" />
             <span>Скрывать текст сообщений в push-уведомлениях</span>
           </label>
+          <button id="openNotifFromSettingsBtn" type="button" class="w-full py-2 px-3 rounded-xl subtle-bg text-xs font-medium text-rose-500 hover:opacity-80 cursor-pointer text-left">
+            🔔 Открыть настройки уведомлений и OneSignal Key
+          </button>
         </div>
 
         <div class="flex items-center justify-between pt-2 border-t border-soft">
@@ -661,6 +688,9 @@
         e2eeKey: '',
         lockPin: '',
         hideNotifText: false,
+        accentColor: 'rose',
+        wallpaper: 'clean',
+        quickEmoji: '❤️',
         oneSignalApiKey: '',
         isLocked: false,
         resetVotes: { me: false, partner: false },
@@ -781,9 +811,6 @@
       const settingsModal = document.getElementById('settingsModal');
       const closeSettingsBtn = document.getElementById('closeSettingsBtn');
       const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-      const myNameInput = document.getElementById('myNameInput');
-      const partnerNameInput = document.getElementById('partnerNameInput');
-      const partnerStatusInput = document.getElementById('partnerStatusInput');
       const anniversaryInput = document.getElementById('anniversaryInput');
 
       const openResetConfirmBtn = document.getElementById('openResetConfirmBtn');
@@ -1151,6 +1178,7 @@
         state.darkMode = !state.darkMode;
         saveState();
         applyTheme();
+      applyCustomLook();
       });
 
       emojiToggleBtn.addEventListener('click', () => {
@@ -1193,7 +1221,7 @@
 
       sendHeartBtn.addEventListener('click', () => {
         spawnFloatingHearts();
-        sendMessage('❤️');
+        sendMessage(state.quickEmoji || '❤️');
       });
 
       photoInput.addEventListener('change', (e) => {
@@ -1322,11 +1350,46 @@
       });
 
       // Settings Modal
+      function updateAccentPickerUI() {
+        document.querySelectorAll('#accentPicker button[data-accent]').forEach(btn => {
+          if (btn.dataset.accent === (state.accentColor || 'rose')) {
+            btn.classList.add('ring-2', 'ring-current', 'scale-110');
+          } else {
+            btn.classList.remove('ring-2', 'ring-current', 'scale-110');
+          }
+        });
+      }
+
+      function applyCustomLook() {
+        const palettes = {
+          rose: 'linear-gradient(135deg, #e11d48 0%, #f43f5e 100%)',
+          purple: 'linear-gradient(135deg, #7e22ce 0%, #a855f7 100%)',
+          blue: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)',
+          orange: 'linear-gradient(135deg, #c2410c 0%, #f97316 100%)',
+          slate: 'linear-gradient(135deg, #334155 0%, #64748b 100%)'
+        };
+        document.documentElement.style.setProperty('--bg-bubble-me', palettes[state.accentColor || 'rose'] || palettes.rose);
+
+        messagesContainer.classList.remove('wallpaper-hearts', 'wallpaper-sunset', 'wallpaper-stars');
+        if (state.wallpaper === 'hearts') messagesContainer.classList.add('wallpaper-hearts');
+        else if (state.wallpaper === 'sunset') messagesContainer.classList.add('wallpaper-sunset');
+        else if (state.wallpaper === 'stars') messagesContainer.classList.add('wallpaper-stars');
+
+        sendHeartBtn.textContent = state.quickEmoji || '❤️';
+      }
+
+      document.getElementById('accentPicker').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-accent]');
+        if (!btn) return;
+        state.accentColor = btn.dataset.accent;
+        updateAccentPickerUI();
+        applyCustomLook();
+      });
+
       function openSettings() {
-        document.getElementById('myRoleSelect').value = state.activeRole || 'me';
-        myNameInput.value = state.myName;
-        partnerNameInput.value = state.partnerName;
-        partnerStatusInput.value = state.partnerStatus;
+        updateAccentPickerUI();
+        document.getElementById('wallpaperSelect').value = state.wallpaper || 'clean';
+        document.getElementById('quickEmojiSelect').value = state.quickEmoji || '❤️';
         anniversaryInput.value = state.anniversaryDate;
         document.getElementById('lockPinInput').value = state.lockPin || '';
         document.getElementById('hideNotifTextInput').checked = !!state.hideNotifText;
@@ -1336,17 +1399,22 @@
       settingsBtn.addEventListener('click', openSettings);
       daysTogetherBtn.addEventListener('click', openSettings);
       closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+      document.getElementById('openNotifFromSettingsBtn').addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        const keyInput = document.getElementById('oneSignalKeyInput');
+        if (keyInput) keyInput.value = state.oneSignalApiKey || '';
+        updateNotifStatus();
+        notifModal.classList.remove('hidden');
+      });
 
       saveSettingsBtn.addEventListener('click', () => {
-        state.activeRole = document.getElementById('myRoleSelect').value;
-        state.roleSelected = true;
-        state.myName = myNameInput.value.trim() || 'Русечка';
-        state.partnerName = partnerNameInput.value.trim() || 'Линочка';
-        state.partnerStatus = partnerStatusInput.value.trim() || 'В сети 💕';
+        state.wallpaper = document.getElementById('wallpaperSelect').value;
+        state.quickEmoji = document.getElementById('quickEmojiSelect').value;
         state.anniversaryDate = anniversaryInput.value || defaultState.anniversaryDate;
         state.lockPin = document.getElementById('lockPinInput').value.trim();
         state.hideNotifText = document.getElementById('hideNotifTextInput').checked;
         saveState();
+        applyCustomLook();
         renderHeader();
         renderMessages();
         settingsModal.classList.add('hidden');
@@ -1825,10 +1893,9 @@
       }
 
       notifBtn.addEventListener('click', () => {
-        if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-      }
-      updateNotifStatus();
+        const keyInput = document.getElementById('oneSignalKeyInput');
+        if (keyInput) keyInput.value = state.oneSignalApiKey || '';
+        updateNotifStatus();
         notifModal.classList.remove('hidden');
       });
       closeNotifBtn.addEventListener('click', () => notifModal.classList.add('hidden'));
