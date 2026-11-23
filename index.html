@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.2</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.3</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -1503,16 +1503,238 @@
         window.visualViewport.addEventListener('scroll', syncViewportHeight);
       }
 
+      function startSyncLoop() {
+        clearInterval(syncTimer);
+        if (!getFirebaseEndpoint()) {
+          updateSyncUI(false);
+          return;
+        }
+        pullFromFirebase();
+        syncTimer = setInterval(pullFromFirebase, 2000);
+      }
+
+      const origSaveState = saveState;
+      saveState = function (skipRemote) {
+        origSaveState();
+        if (!skipRemote && getFirebaseEndpoint()) {
+          pushToFirebase();
+        }
+      };
+
+      function openNotifModal() {
+        const tgT = document.getElementById('tgTokenInput');
+        const tgC = document.getElementById('tgChatIdInput');
+        if (tgT) tgT.value = state.tgBotToken || '';
+        if (tgC) tgC.value = state.tgTargetChatId || '';
+        if (typeof updateNotifStatus === 'function') updateNotifStatus();
+        notifModal.classList.remove('hidden');
+      }
+
+      const resetVoteBanner = document.getElementById('resetVoteBanner');
+      const resetVoteText = document.getElementById('resetVoteText');
+      const approveResetBtn = document.getElementById('approveResetBtn');
+      const cancelResetVoteBtn = document.getElementById('cancelResetVoteBtn');
+
+      function performMutualReset() {
+        state.messages = [];
+        state.resetVotes = { me: false, partner: false };
+        saveState();
+        renderResetBanner();
+        renderMessages();
+        renderGallery();
+        showToast('Оба подтвердили: история переписки очищена');
+      }
+
+      function renderResetBanner() {
+        const v = state.resetVotes || { me: false, partner: false };
+        if (!v.me && !v.partner) {
+          resetVoteBanner.classList.add('hidden');
+          return;
+        }
+        resetVoteBanner.classList.remove('hidden');
+        const myRole = state.activeRole || 'me';
+        const iVoted = !!v[myRole];
+        const requesterName = v.me ? state.myName : state.partnerName;
+        if (iVoted) {
+          resetVoteText.textContent = '⏳ Запрос на очистку отправлен. Ждём подтверждения второго человека...';
+          approveResetBtn.classList.add('hidden');
+        } else {
+          resetVoteText.textContent = `⚠️ ${requesterName} предлагает очистить переписку. Подтвердить?`;
+          approveResetBtn.classList.remove('hidden');
+        }
+      }
+
+      if (approveResetBtn) {
+        approveResetBtn.addEventListener('click', () => {
+          state.resetVotes = state.resetVotes || { me: false, partner: false };
+          state.resetVotes[state.activeRole || 'me'] = true;
+          if (state.resetVotes.me && state.resetVotes.partner) {
+            performMutualReset();
+          } else {
+            saveState();
+            renderResetBanner();
+          }
+        });
+      }
+
+      if (cancelResetVoteBtn) {
+        cancelResetVoteBtn.addEventListener('click', () => {
+          state.resetVotes = { me: false, partner: false };
+          saveState();
+          renderResetBanner();
+          showToast('Очистка истории отменена');
+        });
+      }
+
+      // CALENDAR LOGIC
+      const calPrevBtn = document.getElementById('calPrevBtn');
+      const calNextBtn = document.getElementById('calNextBtn');
+      const calMonthTitle = document.getElementById('calMonthTitle');
+      const calGrid = document.getElementById('calGrid');
+      const calSelectedTitle = document.getElementById('calSelectedTitle');
+      const calDayPlans = document.getElementById('calDayPlans');
+      const calQuickAddForm = document.getElementById('calQuickAddForm');
+      const calQuickInput = document.getElementById('calQuickInput');
+
+      let calYear = new Date().getFullYear();
+      let calMonth = new Date().getMonth();
+      let selectedDateStr = new Date().toISOString().slice(0, 10);
+
+      function renderCalendar() {
+        const monthNames = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+        calMonthTitle.textContent = `${monthNames[calMonth]} ${calYear}`;
+
+        const firstDay = new Date(calYear, calMonth, 1);
+        const startOffset = (firstDay.getDay() + 6) % 7;
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        const todayStr = new Date().toISOString().slice(0, 10);
+
+        const planDates = new Set(state.plans.filter(p => p.date).map(p => p.date));
+        const annivMonthDay = (state.anniversaryDate || '').slice(5);
+
+        let html = '';
+        for (let i = 0; i < startOffset; i++) {
+          html += '<div></div>';
+        }
+        for (let d = 1; d <= daysInMonth; d++) {
+          const mm = String(calMonth + 1).padStart(2, '0');
+          const dd = String(d).padStart(2, '0');
+          const dateStr = `${calYear}-${mm}-${dd}`;
+          const hasPlan = planDates.has(dateStr);
+          const isSelected = dateStr === selectedDateStr;
+          const isToday = dateStr === todayStr;
+          const isAnniv = annivMonthDay && `${mm}-${dd}` === annivMonthDay;
+
+          let cls = 'h-10 rounded-xl flex flex-col items-center justify-center text-xs font-medium cursor-pointer transition relative ';
+          if (isSelected) cls += 'bg-rose-500 text-white shadow-sm ';
+          else if (isToday) cls += 'subtle-bg ring-2 ring-rose-400 ';
+          else cls += 'hover:bg-rose-500/10 ';
+
+          html += `
+            <button type="button" data-cal-date="${dateStr}" class="${cls}">
+              <span>${d}</span>
+              ${hasPlan ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-rose-500'} mt-0.5"></span>` : ''}
+              ${isAnniv ? '<span class="absolute top-0.5 right-1 text-[9px]">❤️</span>' : ''}
+            </button>
+          `;
+        }
+        calGrid.innerHTML = html;
+
+        calSelectedTitle.textContent = 'Планы на ' + selectedDateStr.split('-').reverse().join('.');
+        const dayPlans = state.plans.filter(p => p.date === selectedDateStr);
+        if (dayPlans.length === 0) {
+          calDayPlans.innerHTML = '<p class="text-xs text-muted">На этот день планов пока нет.</p>';
+        } else {
+          calDayPlans.innerHTML = dayPlans.map(p => `
+            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl subtle-bg">
+              <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                <input type="checkbox" data-action="toggle-plan" data-id="${p.id}" ${p.done ? 'checked' : ''} class="w-4 h-4 accent-rose-500 rounded cursor-pointer shrink-0" />
+                <span class="text-sm ${p.done ? 'line-through text-muted' : ''} break-words">${escapeHtml(p.text)}</span>
+              </label>
+              <span class="text-[11px] text-muted shrink-0">${escapeHtml(p.by)}</span>
+            </div>
+          `).join('');
+        }
+      }
+
+      if (tabCalendar) {
+        tabCalendar.addEventListener('click', () => {
+          currentTab = 'calendar';
+          renderTabs();
+          renderCalendar();
+        });
+      }
+      if (calPrevBtn) {
+        calPrevBtn.addEventListener('click', () => {
+          calMonth--;
+          if (calMonth < 0) { calMonth = 11; calYear--; }
+          renderCalendar();
+        });
+      }
+      if (calNextBtn) {
+        calNextBtn.addEventListener('click', () => {
+          calMonth++;
+          if (calMonth > 11) { calMonth = 0; calYear++; }
+          renderCalendar();
+        });
+      }
+      if (calGrid) {
+        calGrid.addEventListener('click', (e) => {
+          const btn = e.target.closest('button[data-cal-date]');
+          if (!btn) return;
+          selectedDateStr = btn.dataset.calDate;
+          renderCalendar();
+        });
+      }
+      if (calDayPlans) {
+        calDayPlans.addEventListener('change', (e) => {
+          const cb = e.target.closest('input[data-action="toggle-plan"]');
+          if (cb) {
+            const plan = state.plans.find(p => p.id === cb.dataset.id);
+            if (plan) {
+              plan.done = cb.checked;
+              saveState();
+              renderCalendar();
+              renderPlans();
+              renderTabs();
+            }
+          }
+        });
+      }
+      if (calQuickAddForm) {
+        calQuickAddForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const text = calQuickInput.value.trim();
+          if (!text) return;
+          const author = state.activeRole === 'me' ? state.myName : state.partnerName;
+          state.plans.unshift({
+            id: 'p' + Date.now(),
+            text,
+            done: false,
+            by: author,
+            date: selectedDateStr
+          });
+          calQuickInput.value = '';
+          saveState();
+          renderCalendar();
+          renderPlans();
+          renderTabs();
+        });
+      }
+
       // Initial render
-      startSyncLoop();
       applyTheme();
+      applyCustomLook();
       applySoundIcon();
       initEmojiDrawer();
       renderHeader();
       renderTabs();
+      renderResetBanner();
       renderMessages();
       renderPlans();
+      renderCalendar();
       renderGallery();
+      try { startSyncLoop(); } catch (e) {}
     })();
   </script>
 </body>
