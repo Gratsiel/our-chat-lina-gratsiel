@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.1</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.2</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -690,7 +690,7 @@
         tgBotToken: '',
         tgTargetChatId: '',
         tgProxyUrl: '',
-        pushServerUrl: '',
+        pushServerUrl: 'https://functions.yandexcloud.net/d4eurvq31lt4g240f6lr',
         isLocked: false,
         resetVotes: { me: false, partner: false },
         messages: [
@@ -749,6 +749,7 @@
       }
 
       let state = loadState();
+      if (!state.pushServerUrl) state.pushServerUrl = 'https://functions.yandexcloud.net/d4eurvq31lt4g240f6lr';
       let currentTab = 'chat';
       let searchQuery = '';
       let replyingTo = null;
@@ -1225,16 +1226,38 @@
         sendMessage(state.quickEmoji || '❤️');
       });
 
-      photoInput.addEventListener('change', (e) => {
+      function compressImageFile(file, maxDim = 1080, quality = 0.78) {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+              let w = img.width, h = img.height;
+              if (w > maxDim || h > maxDim) {
+                if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+                else { w = Math.round(w * maxDim / h); h = maxDim; }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = () => resolve(ev.target.result);
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      photoInput.addEventListener('change', async (e) => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          sendMessage(messageInput.value, ev.target.result);
-          messageInput.value = '';
-          photoInput.value = '';
-        };
-        reader.readAsDataURL(file);
+        const compressed = await compressImageFile(file);
+        sendMessage(messageInput.value, compressed);
+        messageInput.value = '';
+        photoInput.value = '';
       });
 
       cancelReplyBtn.addEventListener('click', () => {
@@ -1456,6 +1479,9 @@
       const disconnectSyncBtn = document.getElementById('disconnectSyncBtn');
 
       let syncTimer = null;
+      let isPulling = false;
+      let remoteLockedWithoutKey = false;
+      let lastRemoteUpdatedAt = 0;
 
       function getFirebaseEndpoint() {
         const base = (state.firebaseUrl || '').trim().replace(/\/+$/, '');
@@ -1477,7 +1503,10 @@
         }
       }
 
+      const _aesKeyCache = {};
       async function deriveAesKey(passphrase, saltStr) {
+        const cacheKey = passphrase + '::' + saltStr;
+        if (_aesKeyCache[cacheKey]) return _aesKeyCache[cacheKey];
         const enc = new TextEncoder();
         const keyMaterial = await window.crypto.subtle.importKey(
           'raw',
@@ -1486,7 +1515,7 @@
           false,
           ['deriveKey']
         );
-        return window.crypto.subtle.deriveKey(
+        const derived = await window.crypto.subtle.deriveKey(
           {
             name: 'PBKDF2',
             salt: enc.encode('couple-messenger-' + saltStr),
@@ -1498,6 +1527,8 @@
           false,
           ['encrypt', 'decrypt']
         );
+        _aesKeyCache[cacheKey] = derived;
+        return derived;
       }
 
       async function encryptPayload(obj, passphrase, room) {
@@ -1523,6 +1554,10 @@
       async function pushToFirebase() {
         const url = getFirebaseEndpoint();
         if (!url) return;
+        if (remoteLockedWithoutKey && !(state.e2eeKey || '').trim()) {
+          updateSyncUI(false, 'Введите ключ E2EE, чтобы не перезаписать зашифрованный чат');
+          return;
+        }
         try {
           const rawPayload = {
             messages: state.messages,
@@ -1548,23 +1583,34 @@
 
       async function pullFromFirebase() {
         const url = getFirebaseEndpoint();
-        if (!url) return;
+        if (!url || isPulling) return;
+        isPulling = true;
         try {
-          const res = await fetch(url);
+          const res = await fetch(url, { cache: 'no-store' });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           let data = await res.json();
+          if (data && data.updatedAt && data.updatedAt === lastRemoteUpdatedAt) {
+            updateSyncUI(true, state.e2eeKey ? 'Статус: Подключено 🔐 (E2EE AES-256)' : 'Статус: Подключено (без E2EE)');
+            return;
+          }
           if (data && data.encrypted && data.iv && data.ct) {
             if (!(state.e2eeKey || '').trim()) {
+              remoteLockedWithoutKey = true;
               updateSyncUI(false, 'Данные зашифрованы: введите секретный ключ E2EE');
               return;
             }
             try {
               data = await decryptPayload(data, state.e2eeKey.trim(), state.roomCode || 'love');
+              remoteLockedWithoutKey = false;
             } catch (decErr) {
+              remoteLockedWithoutKey = true;
               updateSyncUI(false, 'Неверный ключ E2EE — не удалось расшифровать чат');
               return;
             }
+          } else {
+            remoteLockedWithoutKey = false;
           }
+          if (data && data.updatedAt) lastRemoteUpdatedAt = data.updatedAt;
           if (data && Array.isArray(data.messages)) {
             const remoteVotes = data.resetVotes || { me: false, partner: false };
             const changed = JSON.stringify(data.messages) !== JSON.stringify(state.messages) ||
@@ -1589,7 +1635,9 @@
           }
           updateSyncUI(true, state.e2eeKey ? 'Статус: Подключено 🔐 (E2EE AES-256)' : 'Статус: Подключено (без E2EE)');
         } catch (err) {
-          updateSyncUI(false, 'Ошибка подключения: проверьте HTTPS URL и правила');
+          updateSyncUI(false, 'Ошибка подключения: проверьте сеть и правила Firebase');
+        } finally {
+          isPulling = false;
         }
       }
 
@@ -1845,23 +1893,47 @@
         } catch (e) {}
       }
 
-      async function sendDirectWebPush(senderName, textBody) {
+      let cachedPartnerSub = null;
+      async function refreshPartnerPushSub() {
         try {
           const roomUrl = getFirebaseBaseRoomUrl();
-          if (!roomUrl) return;
+          if (!roomUrl) return null;
           const targetRole = state.activeRole === 'me' ? 'partner' : 'me';
-          const subRes = await fetch(`${roomUrl}/pushSubs/${targetRole}.json`);
-          if (!subRes.ok) return;
+          const subRes = await fetch(`${roomUrl}/pushSubs/${targetRole}.json`, { cache: 'no-store' });
+          if (!subRes.ok) return cachedPartnerSub;
           const sub = await subRes.json();
+          if (sub && sub.endpoint) cachedPartnerSub = sub;
+          return cachedPartnerSub;
+        } catch (e) {
+          return cachedPartnerSub;
+        }
+      }
+
+      async function sendDirectWebPush(senderName, textBody) {
+        try {
+          let sub = cachedPartnerSub || (await refreshPartnerPushSub());
           if (!sub || !sub.endpoint) return;
           const bodyText = state.hideNotifText ? 'Новое приватное сообщение 🔒' : textBody;
           const customUrl = (state.pushServerUrl || '').trim().replace(/^https:\/\//i, 'https://');
           const pushEndpoint = customUrl.startsWith('https://') ? customUrl : (window.location.origin + '/api/push');
-          await fetch(pushEndpoint, {
+          const payloadStr = JSON.stringify({ subscription: sub, title: senderName, body: bodyText });
+          let res = await fetch(pushEndpoint, {
             method: 'POST',
+            keepalive: true,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subscription: sub, title: senderName, body: bodyText })
-          });
+            body: payloadStr
+          }).catch(() => null);
+          if (!res || !res.ok) {
+            const freshSub = await refreshPartnerPushSub();
+            if (freshSub && freshSub.endpoint) {
+              await fetch(pushEndpoint, {
+                method: 'POST',
+                keepalive: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscription: freshSub, title: senderName, body: bodyText })
+              }).catch(() => {});
+            }
+          }
         } catch (e) {}
       }
 
@@ -1907,9 +1979,19 @@
           updateSyncUI(false);
           return;
         }
+        lastRemoteUpdatedAt = 0;
         pullFromFirebase();
-        syncTimer = setInterval(pullFromFirebase, 2000);
+        refreshPartnerPushSub();
+        syncTimer = setInterval(() => {
+          if (document.visibilityState !== 'hidden') pullFromFirebase();
+        }, 1500);
       }
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          pullFromFirebase();
+          refreshPartnerPushSub();
+        }
+      });
 
       const origSaveState = saveState;
       saveState = function (skipRemote) {
