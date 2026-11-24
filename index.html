@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.6</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.8</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -580,6 +580,10 @@
             <label class="block text-xs text-muted mb-1">👤 Telegram ID получателя (собеседника)</label>
             <input id="tgChatIdInput" type="text" inputmode="numeric" placeholder="Например: 987654321" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
           </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">🌐 Мостик Google Apps Script URL (для работы в РФ без VPN)</label>
+            <input id="tgProxyInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
+          </div>
         </div>
 
         <div class="p-3 rounded-xl subtle-bg text-xs text-muted space-y-1 leading-relaxed">
@@ -695,6 +699,7 @@
         quickEmoji: '❤️',
         tgBotToken: '',
         tgTargetChatId: '',
+        tgProxyUrl: 'https://script.google.com/macros/s/AKfycbyKFXuzK-wtfRdvQJAcVp9UnZD03gLh8aA1pWO5eY6_hwCd6pSlhcxsvLY941E9XcMC/exec',
         isLocked: false,
         resetVotes: { me: false, partner: false },
         messages: [
@@ -1654,6 +1659,8 @@
       enableNotifBtn.addEventListener('click', () => {
         state.tgBotToken = tgTokenInput.value.trim();
         state.tgTargetChatId = tgChatIdInput.value.trim();
+        const tgPVal = document.getElementById('tgProxyInput').value.trim();
+        state.tgProxyUrl = tgPVal;
         origSaveState();
         updateNotifStatus();
         if (state.tgBotToken && state.tgTargetChatId) {
@@ -1667,6 +1674,8 @@
       testNotifBtn.addEventListener('click', async () => {
         state.tgBotToken = tgTokenInput.value.trim();
         state.tgTargetChatId = tgChatIdInput.value.trim();
+        const tgPVal = document.getElementById('tgProxyInput').value.trim();
+        state.tgProxyUrl = tgPVal;
         origSaveState();
         updateNotifStatus();
         if (!state.tgBotToken || !state.tgTargetChatId) {
@@ -1771,8 +1780,18 @@
           if (!token || !chatId) return false;
           const bodyText = state.hideNotifText ? 'Новое приватное сообщение 🔒' : textBody;
           const fullText = `💌 ${senderName}: ${bodyText}`;
-          const url = `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage?chat_id=${encodeURIComponent(chatId)}&text=${encodeURIComponent(fullText)}`;
-          const res = await fetch(url);
+          const proxy = (state.tgProxyUrl || '').trim().replace(/^https:\/\//i, 'https://');
+          let res;
+          if (proxy.startsWith('https://')) {
+            res = await fetch(proxy, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ token, chat_id: chatId, text: fullText })
+            });
+          } else {
+            const url = `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage?chat_id=${encodeURIComponent(chatId)}&text=${encodeURIComponent(fullText)}`;
+            res = await fetch(url);
+          }
           const data = await res.json().catch(() => ({}));
           if (!res.ok || !data.ok) {
             const desc = data.description || ('HTTP ' + res.status);
@@ -1853,6 +1872,8 @@
         const tgC = document.getElementById('tgChatIdInput');
         if (tgT) tgT.value = state.tgBotToken || '';
         if (tgC) tgC.value = state.tgTargetChatId || '';
+        const tgP = document.getElementById('tgProxyInput');
+        if (tgP) tgP.value = state.tgProxyUrl || '';
         if (typeof updateNotifStatus === 'function') updateNotifStatus();
         notifModal.classList.remove('hidden');
       }
