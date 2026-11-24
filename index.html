@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.0</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.1</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -571,6 +571,11 @@
           Статус: Проверка...
         </div>
 
+        <div>
+          <label class="block text-xs text-muted mb-1">🌐 Адрес Push-функции (Yandex Cloud URL)</label>
+          <input id="pushServerUrlInput" type="url" placeholder="https://functions.yandexcloud.net/..." class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
+        </div>
+
         <div class="p-3 rounded-xl subtle-bg text-xs text-muted space-y-1.5 leading-relaxed">
           <p class="font-semibold text-rose-500">Как включить (без Telegram и без VPN):</p>
           <p>1. Убедитесь, что открыли <strong>установленное приложение</strong> с рабочего стола (на iPhone 12 через Safari → <strong>На экран «Домой»</strong>, на Honor 200 через Chrome → <strong>Установить</strong>).</p>
@@ -685,6 +690,7 @@
         tgBotToken: '',
         tgTargetChatId: '',
         tgProxyUrl: '',
+        pushServerUrl: '',
         isLocked: false,
         resetVotes: { me: false, partner: false },
         messages: [
@@ -1659,6 +1665,8 @@
       });
 
       enableNotifBtn.addEventListener('click', async () => {
+        const psIn = document.getElementById('pushServerUrlInput');
+        if (psIn) { state.pushServerUrl = psIn.value.trim().replace(/^https:\/\//i, 'https://'); origSaveState(); }
         if (!('Notification' in window) || !('serviceWorker' in navigator)) {
           showToast('На iPhone откройте приложение с экрана «Домой»');
           return;
@@ -1689,6 +1697,8 @@
       });
 
       testNotifBtn.addEventListener('click', async () => {
+        const psIn = document.getElementById('pushServerUrlInput');
+        if (psIn) { state.pushServerUrl = psIn.value.trim().replace(/^https:\/\//i, 'https://'); origSaveState(); }
         if (!('serviceWorker' in navigator)) return;
         notifStatusBox.textContent = '⏳ Отправка тестового Push...';
         try {
@@ -1698,7 +1708,9 @@
             notifStatusBox.textContent = 'Сначала нажмите «Включить Push»';
             return;
           }
-          const res = await fetch(window.location.origin + '/api/push', {
+          const customUrl = (state.pushServerUrl || '').trim().replace(/^https:\/\//i, 'https://');
+          const pushEndpoint = customUrl.startsWith('https://') ? customUrl : (window.location.origin + '/api/push');
+          const res = await fetch(pushEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1843,7 +1855,8 @@
           const sub = await subRes.json();
           if (!sub || !sub.endpoint) return;
           const bodyText = state.hideNotifText ? 'Новое приватное сообщение 🔒' : textBody;
-          const pushEndpoint = window.location.origin + '/api/push';
+          const customUrl = (state.pushServerUrl || '').trim().replace(/^https:\/\//i, 'https://');
+          const pushEndpoint = customUrl.startsWith('https://') ? customUrl : (window.location.origin + '/api/push');
           await fetch(pushEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1907,6 +1920,8 @@
       };
 
       function openNotifModal() {
+        const psIn = document.getElementById('pushServerUrlInput');
+        if (psIn) psIn.value = state.pushServerUrl || '';
         if (typeof updateNotifStatus === 'function') updateNotifStatus();
         notifModal.classList.remove('hidden');
       }
