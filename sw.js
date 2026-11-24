@@ -7,7 +7,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Новое сообщение 💕', body: 'Откройте чат, чтобы прочитать' };
+  let data = { title: 'Наш Чат 💕', body: 'Новое сообщение' };
   if (event.data) {
     try {
       data = event.data.json();
@@ -16,11 +16,12 @@ self.addEventListener('push', (event) => {
     }
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Наш Мессенджер', {
+    self.registration.showNotification(data.title || 'Наш Чат 💕', {
       body: data.body || 'Новое сообщение',
       icon: './icon-192.png',
       badge: './icon-192.png',
-      tag: 'couple-chat-msg',
+      vibrate: [200, 100, 200],
+      tag: 'msg-' + Date.now(),
       renotify: true
     })
   );
@@ -30,10 +31,10 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      if (clients.length > 0) {
-        return clients[0].focus();
+      for (const c of clients) {
+        if ('focus' in c) return c.focus();
       }
-      return self.clients.openWindow('/');
+      return self.clients.openWindow('./');
     })
   );
 });

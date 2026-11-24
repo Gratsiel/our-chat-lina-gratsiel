@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.2</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.3</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -1692,9 +1692,13 @@
             const reg = (await navigator.serviceWorker.getRegistration('./')) || (await navigator.serviceWorker.register('./sw.js', { scope: './' }));
             const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
             if (sub) {
-              notifStatusBox.textContent = 'Статус: Прямые Push включены ✅ (' + (state.activeRole === 'me' ? 'Русечка' : 'Линочка') + ')';
+              const myLabel = state.activeRole === 'me' ? 'Русечка' : 'Линочка';
+              const partnerLabel = state.activeRole === 'me' ? 'Линочка' : 'Русечка';
+              await savePushSubToFirebase(state.activeRole || 'me', sub);
+              const partnerSub = await refreshPartnerPushSub();
+              const partnerOk = !!(partnerSub && partnerSub.endpoint);
+              notifStatusBox.textContent = `Вы (${myLabel}): ✅ · ${partnerLabel}: ${partnerOk ? '✅' : '❌ (нужно включить на 2-м телефоне)'}`;
               notifDot.classList.remove('hidden');
-              savePushSubToFirebase(state.activeRole || 'me', sub);
               return;
             }
           } catch (e) {}
@@ -1911,30 +1915,28 @@
 
       async function sendDirectWebPush(senderName, textBody) {
         try {
-          let sub = cachedPartnerSub || (await refreshPartnerPushSub());
-          if (!sub || !sub.endpoint) return;
+          let sub = await refreshPartnerPushSub();
+          if (!sub || !sub.endpoint) {
+            showToast('Собеседник ещё не нажал «Включить Push» в 🔔');
+            return;
+          }
           const bodyText = state.hideNotifText ? 'Новое приватное сообщение 🔒' : textBody;
           const customUrl = (state.pushServerUrl || '').trim().replace(/^https:\/\//i, 'https://');
           const pushEndpoint = customUrl.startsWith('https://') ? customUrl : (window.location.origin + '/api/push');
           const payloadStr = JSON.stringify({ subscription: sub, title: senderName, body: bodyText });
-          let res = await fetch(pushEndpoint, {
+          const res = await fetch(pushEndpoint, {
             method: 'POST',
             keepalive: true,
             headers: { 'Content-Type': 'application/json' },
             body: payloadStr
-          }).catch(() => null);
-          if (!res || !res.ok) {
-            const freshSub = await refreshPartnerPushSub();
-            if (freshSub && freshSub.endpoint) {
-              await fetch(pushEndpoint, {
-                method: 'POST',
-                keepalive: true,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subscription: freshSub, title: senderName, body: bodyText })
-              }).catch(() => {});
-            }
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            showToast('Push ошибка: ' + (errData.error || res.status));
           }
-        } catch (e) {}
+        } catch (e) {
+          showToast('Push: нет связи с сервером уведомлений');
+        }
       }
 
       function chooseRole(role) {
