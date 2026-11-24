@@ -423,7 +423,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v3.9</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.0</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
@@ -472,7 +472,7 @@
             <span>Скрывать текст сообщений в push-уведомлениях</span>
           </label>
           <button id="openNotifFromSettingsBtn" type="button" class="w-full py-2 px-3 rounded-xl subtle-bg text-xs font-medium text-rose-500 hover:opacity-80 cursor-pointer text-left">
-            🔔 Настроить уведомления в Telegram
+            🔔 Настроить Push-уведомления
           </button>
           <button id="reopenRolePickerBtn" type="button" class="w-full py-2 px-3 rounded-xl subtle-bg text-xs font-medium text-muted hover:text-rose-500 cursor-pointer text-left">
             👤 Сменить роль (Русечка / Линочка)
@@ -559,46 +559,31 @@
       </form>
     </div>
 
-    <!-- NOTIFICATIONS MODAL (Telegram Bot) -->
+    <!-- NOTIFICATIONS MODAL (Direct Web Push) -->
     <div id="notifModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">🔔 Уведомления через Telegram</h3>
+          <h3 class="font-bold text-base">🔔 Прямые Push-уведомления</h3>
           <button id="closeNotifBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
         <div id="notifStatusBox" class="text-xs px-3 py-2 rounded-xl subtle-bg text-muted">
-          Статус: Настройте бота ниже
+          Статус: Проверка...
         </div>
 
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs text-muted mb-1">🤖 Токен Telegram-бота (из @BotFather)</label>
-            <input id="tgTokenInput" type="password" placeholder="123456789:AAH..." class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
-          </div>
-          <div>
-            <label class="block text-xs text-muted mb-1">👤 Telegram ID получателя (собеседника)</label>
-            <input id="tgChatIdInput" type="text" inputmode="numeric" placeholder="Например: 987654321" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
-          </div>
-          <div>
-            <label class="block text-xs text-muted mb-1">🌐 Мостик Vercel URL (автоматически на vercel.app)</label>
-            <input id="tgProxyInput" type="url" placeholder="https://ваш-проект.vercel.app/api/tg" class="w-full subtle-bg rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-rose-400 text-xs" />
-          </div>
-        </div>
-
-        <div class="p-3 rounded-xl subtle-bg text-xs text-muted space-y-1 leading-relaxed">
-          <p class="font-semibold text-rose-500">Как подключить за 1 минуту:</p>
-          <p>1. Создайте бота в <strong>@BotFather</strong> (<span class="font-mono">/newbot</span>) и нажмите в нём <strong>Старт</strong> с <strong>обоих</strong> телефонов.</p>
-          <p>2. Узнайте ваши числовые ID в боте <strong>@userinfobot</strong>.</p>
-          <p>3. На своём телефоне впишите ID девушки, а на её телефоне — ваш ID (токен бота один и тот же).</p>
+        <div class="p-3 rounded-xl subtle-bg text-xs text-muted space-y-1.5 leading-relaxed">
+          <p class="font-semibold text-rose-500">Как включить (без Telegram и без VPN):</p>
+          <p>1. Убедитесь, что открыли <strong>установленное приложение</strong> с рабочего стола (на iPhone 12 через Safari → <strong>На экран «Домой»</strong>, на Honor 200 через Chrome → <strong>Установить</strong>).</p>
+          <p>2. Нажмите <strong>«Включить Push»</strong> ниже и разрешите уведомления — телефон сам привяжется к чату.</p>
+          <p>3. Нажмите <strong>«Тест Push»</strong>, чтобы проверить доставку на экран.</p>
         </div>
 
         <div class="flex items-center justify-between gap-2 pt-2 border-t border-soft">
           <button id="testNotifBtn" type="button" class="px-3 py-2 rounded-xl subtle-bg text-xs font-medium hover:opacity-80 cursor-pointer">
-            Тест в Telegram
+            Тест Push
           </button>
           <button id="enableNotifBtn" type="button" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium cursor-pointer transition">
-            Сохранить
+            Включить Push
           </button>
         </div>
       </div>
@@ -1121,7 +1106,7 @@
         renderGallery();
         playPopSound();
         const senderTitle = state.activeRole === 'me' ? state.myName : state.partnerName;
-        sendTelegramPush(senderTitle || 'Новое сообщение', clean || '📷 Фотография');
+        sendDirectWebPush(senderTitle || 'Новое сообщение', clean || '📷 Фотография');
       }
 
       function initEmojiDrawer() {
@@ -1628,7 +1613,7 @@
         showToast(state.e2eeKey ? 'Подключено с шифрованием E2EE 🔐' : 'Подключено к Firebase');
       });
 
-      // TELEGRAM NOTIFICATIONS
+      // DIRECT WEB PUSH NOTIFICATIONS
       const notifBtn = document.getElementById('notifBtn');
       const notifDot = document.getElementById('notifDot');
       const notifModal = document.getElementById('notifModal');
@@ -1636,16 +1621,33 @@
       const notifStatusBox = document.getElementById('notifStatusBox');
       const enableNotifBtn = document.getElementById('enableNotifBtn');
       const testNotifBtn = document.getElementById('testNotifBtn');
-      const tgTokenInput = document.getElementById('tgTokenInput');
-      const tgChatIdInput = document.getElementById('tgChatIdInput');
 
-      function updateNotifStatus() {
-        const hasTg = !!(state.tgBotToken && state.tgTargetChatId);
-        if (hasTg) {
-          notifStatusBox.textContent = 'Статус: Telegram-уведомления настроены ✅';
-          notifDot.classList.remove('hidden');
+      async function updateNotifStatus() {
+        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+          notifStatusBox.textContent = 'На iPhone сначала добавьте сайт на экран «Домой» и откройте оттуда.';
+          notifDot.classList.add('hidden');
+          return;
+        }
+        if (Notification.permission === 'denied') {
+          notifStatusBox.textContent = 'Статус: Уведомления запрещены в настройках браузера ❌';
+          notifDot.classList.add('hidden');
+          return;
+        }
+        if (Notification.permission === 'granted') {
+          try {
+            const reg = (await navigator.serviceWorker.getRegistration('./')) || (await navigator.serviceWorker.register('./sw.js', { scope: './' }));
+            const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+            if (sub) {
+              notifStatusBox.textContent = 'Статус: Прямые Push включены ✅ (' + (state.activeRole === 'me' ? 'Русечка' : 'Линочка') + ')';
+              notifDot.classList.remove('hidden');
+              savePushSubToFirebase(state.activeRole || 'me', sub);
+              return;
+            }
+          } catch (e) {}
+          notifStatusBox.textContent = 'Статус: Нажмите «Включить Push» для привязки телефона';
+          notifDot.classList.add('hidden');
         } else {
-          notifStatusBox.textContent = 'Статус: Введите токен бота и ID получателя';
+          notifStatusBox.textContent = 'Статус: Push ещё не включены';
           notifDot.classList.add('hidden');
         }
       }
@@ -1656,36 +1658,64 @@
         if (e.target === notifModal) notifModal.classList.add('hidden');
       });
 
-      enableNotifBtn.addEventListener('click', () => {
-        state.tgBotToken = tgTokenInput.value.trim();
-        state.tgTargetChatId = tgChatIdInput.value.trim();
-        const tgPVal = document.getElementById('tgProxyInput').value.trim();
-        state.tgProxyUrl = tgPVal;
-        origSaveState();
-        updateNotifStatus();
-        if (state.tgBotToken && state.tgTargetChatId) {
-          notifModal.classList.add('hidden');
-          showToast('Telegram-уведомления сохранены ✅');
-        } else {
-          showToast('Заполните оба поля');
+      enableNotifBtn.addEventListener('click', async () => {
+        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+          showToast('На iPhone откройте приложение с экрана «Домой»');
+          return;
+        }
+        notifStatusBox.textContent = '⏳ Подключение Push...';
+        try {
+          const perm = await Notification.requestPermission();
+          if (perm !== 'granted') {
+            updateNotifStatus();
+            showToast('Разрешение не выдано');
+            return;
+          }
+          const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          await navigator.serviceWorker.ready;
+          let sub = await reg.pushManager.getSubscription();
+          if (!sub) {
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+          }
+          await savePushSubToFirebase(state.activeRole || 'me', sub);
+          await updateNotifStatus();
+          showToast('✅ Push-уведомления включены!');
+        } catch (err) {
+          notifStatusBox.textContent = '❌ Ошибка: ' + (err.message || 'не удалось подписаться');
         }
       });
 
       testNotifBtn.addEventListener('click', async () => {
-        state.tgBotToken = tgTokenInput.value.trim();
-        state.tgTargetChatId = tgChatIdInput.value.trim();
-        const tgPVal = document.getElementById('tgProxyInput').value.trim();
-        state.tgProxyUrl = tgPVal;
-        origSaveState();
-        updateNotifStatus();
-        if (!state.tgBotToken || !state.tgTargetChatId) {
-          showToast('Сначала введите токен бота и ID получателя');
-          return;
+        if (!('serviceWorker' in navigator)) return;
+        notifStatusBox.textContent = '⏳ Отправка тестового Push...';
+        try {
+          const reg = (await navigator.serviceWorker.getRegistration('./')) || (await navigator.serviceWorker.getRegistration());
+          const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+          if (!sub) {
+            notifStatusBox.textContent = 'Сначала нажмите «Включить Push»';
+            return;
+          }
+          const res = await fetch(window.location.origin + '/api/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscription: sub.toJSON ? sub.toJSON() : sub,
+              title: 'Наш Чат 💕',
+              body: 'Прямые Push-уведомления работают!'
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.ok) {
+            notifStatusBox.textContent = '✅ Тестовый Push отправлен!';
+          } else {
+            notifStatusBox.textContent = '❌ Ошибка сервера: ' + (data.error || res.status);
+          }
+        } catch (err) {
+          notifStatusBox.textContent = '❌ Ошибка сети: ' + (err.message || 'нет связи');
         }
-        notifStatusBox.textContent = '⏳ Отправка теста в Telegram...';
-        testNotifBtn.disabled = true;
-        await sendTelegramPush(state.activeRole === 'me' ? state.myName : state.partnerName, 'Тестовое уведомление 💕', true);
-        testNotifBtn.disabled = false;
       });
 
       // LOCK SCREEN
@@ -1773,47 +1803,53 @@
       const pickRoleMeBtn = document.getElementById('pickRoleMeBtn');
       const pickRolePartnerBtn = document.getElementById('pickRolePartnerBtn');
 
-      async function sendTelegramPush(senderName, textBody, isTest = false) {
+      const VAPID_PUBLIC_KEY = 'BO8doExnGUgrR7LiCTmvPlkb9bufHmnfwxVmTwiMsht9q5I73ToxmZ6xeEUkHWdy4U9Uy5ztD2XFyJSGCIZnVBg';
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+        return outputArray;
+      }
+
+      function getFirebaseBaseRoomUrl() {
+        const base = (state.firebaseUrl || '').trim().replace(/\/+$/, '').replace(/^https:\/\//i, 'https://');
+        const room = (state.roomCode || 'love').trim().replace(/[^a-zA-Z0-9_-]/g, '') || 'love';
+        if (!base.startsWith('https://')) return null;
+        return `${base}/rooms/${room}`;
+      }
+
+      async function savePushSubToFirebase(role, sub) {
+        const roomUrl = getFirebaseBaseRoomUrl();
+        if (!roomUrl || !sub) return;
         try {
-          const token = (state.tgBotToken || '').trim();
-          const chatId = (state.tgTargetChatId || '').trim();
-          if (!token || !chatId) return false;
+          await fetch(`${roomUrl}/pushSubs/${role}.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sub.toJSON ? sub.toJSON() : sub)
+          });
+        } catch (e) {}
+      }
+
+      async function sendDirectWebPush(senderName, textBody) {
+        try {
+          const roomUrl = getFirebaseBaseRoomUrl();
+          if (!roomUrl) return;
+          const targetRole = state.activeRole === 'me' ? 'partner' : 'me';
+          const subRes = await fetch(`${roomUrl}/pushSubs/${targetRole}.json`);
+          if (!subRes.ok) return;
+          const sub = await subRes.json();
+          if (!sub || !sub.endpoint) return;
           const bodyText = state.hideNotifText ? 'Новое приватное сообщение 🔒' : textBody;
-          const fullText = `💌 ${senderName}: ${bodyText}`;
-          let proxy = (state.tgProxyUrl || '').trim().replace(/^https:\/\//i, 'https://');
-          if (window.location.hostname.endsWith('.vercel.app') && (!proxy || proxy.includes('script.google.com'))) {
-            proxy = window.location.origin + '/api/tg';
-          }
-          let res;
-          if (proxy.startsWith('https://')) {
-            res = await fetch(proxy, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ token, chat_id: chatId, text: fullText })
-            });
-          } else {
-            const url = `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage?chat_id=${encodeURIComponent(chatId)}&text=${encodeURIComponent(fullText)}`;
-            res = await fetch(url);
-          }
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || !data.ok) {
-            const desc = data.description || ('HTTP ' + res.status);
-            if (isTest && notifStatusBox) notifStatusBox.textContent = '❌ Ошибка Telegram: ' + desc;
-            showToast('Ошибка Telegram: ' + desc);
-            return false;
-          }
-          if (isTest) {
-            if (notifStatusBox) notifStatusBox.textContent = '✅ Тест доставлен в Telegram!';
-            showToast('✅ Тест доставлен в Telegram!');
-          }
-          return true;
-        } catch (e) {
-          if (isTest) {
-            if (notifStatusBox) notifStatusBox.textContent = '❌ Нет связи с api.telegram.org (проверьте сеть/VPN)';
-            showToast('❌ Нет связи с Telegram API');
-          }
-          return false;
-        }
+          const pushEndpoint = window.location.origin + '/api/push';
+          await fetch(pushEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: sub, title: senderName, body: bodyText })
+          });
+        } catch (e) {}
       }
 
       function chooseRole(role) {
@@ -1871,12 +1907,6 @@
       };
 
       function openNotifModal() {
-        const tgT = document.getElementById('tgTokenInput');
-        const tgC = document.getElementById('tgChatIdInput');
-        if (tgT) tgT.value = state.tgBotToken || '';
-        if (tgC) tgC.value = state.tgTargetChatId || '';
-        const tgP = document.getElementById('tgProxyInput');
-        if (tgP) tgP.value = state.tgProxyUrl || '';
         if (typeof updateNotifStatus === 'function') updateNotifStatus();
         notifModal.classList.remove('hidden');
       }
