@@ -47,7 +47,13 @@
     input, textarea, select {
       font-size: 16px !important;
     }
-    html, body {
+    html {
+      touch-action: manipulation;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
       touch-action: manipulation;
       position: fixed;
       inset: 0;
@@ -423,7 +429,7 @@
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="surface border border-soft rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[88dvh] overflow-y-auto">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.3</span></h3>
+          <h3 class="font-bold text-base">Настройки вашего чата <span class="text-xs font-normal text-muted">v4.4</span></h3>
           <button id="closeSettingsBtn" type="button" class="text-muted hover:text-rose-500 cursor-pointer">✕</button>
         </div>
 
